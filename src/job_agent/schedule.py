@@ -1040,8 +1040,12 @@ async def window_session(
                 if on_event:
                     on_event(f"learned: {field_.label[:38]} = {value[:28]}")
         if telegram:
-            telegram.send(f"✅ Window closed — learned {learned} answer(s). "
-                          "Tell me if you submitted and I'll record it.")
+            telegram.send(f"✅ Window closed — learned {learned} answer(s).")
+            # Her rule: an application must reflect in the Jobtracker. A
+            # hand-submit in the window has no click the agent can see, so
+            # the outcome buttons are how it gets recorded — Applied writes
+            # the tracker row.
+            send_outcome_prompt(telegram, job)
         return learned
     finally:
         await session.close()

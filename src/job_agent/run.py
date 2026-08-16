@@ -745,6 +745,11 @@ async def _submit(
         db.set_status(conn, job.dedupe_key, JobStatus.APPLIED)
     report.applied += 1
 
+    # Her rule: whatever is auto-applied MUST reflect in the Jobtracker. A
+    # submission that isn't recorded is worse than a failed one — it
+    # silently disappears from her records — so a missing tracker or a
+    # failed write is said out loud, never swallowed.
+    tracker_problem = ""
     if tracker is not None:
         counts = outcome.resolution.summary() if outcome.resolution else {}
         note = build_note(
@@ -761,6 +766,14 @@ async def _submit(
             )
         except TrackerError as exc:
             report.errors.append(f"tracker write failed: {exc}")
+            tracker_problem = str(exc)
+    else:
+        tracker_problem = "tracker unavailable"
+    if telegram and tracker_problem:
+        telegram.send(
+            f"⚠️ {job.company} was submitted but NOT recorded in your "
+            f"Jobtracker ({tracker_problem}). Tell me and I'll add it."
+        )
 
     if telegram:
         telegram.send(
