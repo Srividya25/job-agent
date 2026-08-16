@@ -1,12 +1,12 @@
 # job-agent
 
-Finds jobs that actually fit you, filters out the noise, fills the
-applications — and **never presses Submit**. You review every filled form
+Finds jobs that actually fit you, filters out the noise, autofills the
+applications — and **never presses Submit**. You review every autofilled form
 (screenshot + the exact values, on Telegram or in an open browser window)
 and you press the button.
 
 ```
-discover → score → propose on Telegram → you pick → fill → you review → you submit
+discover → score → propose on Telegram → you pick → autofill → you review → you submit
 ```
 
 ## What makes it different
