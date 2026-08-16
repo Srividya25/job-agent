@@ -208,7 +208,9 @@ runs automatically at the end of each scheduled batch when configured.
 list with match percentages to Telegram, waits for your per-job
 `auto`/`manual`/`ignore` decisions, fills what you chose, and parks every
 filled form for your review. By default it shows everything queued;
-`--since 24h|3d|1w` narrows to fresh postings and `--limit N` caps the list.
+`--since 24h|3d|1w` narrows to fresh postings and `--limit N` caps the
+list. You can also just text the bot `window 3d` (or `24h`, `1w`,
+`all`) — that becomes the standing window for every future batch.
 
 Optionally set `TELEGRAM_JOBS_CHAT_ID` (e.g. a group you add the bot to) to
 send the ranked lists to their own chat, keeping your main chat for form
