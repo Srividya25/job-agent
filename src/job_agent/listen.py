@@ -97,12 +97,10 @@ def _route_callback(profile: Profile, telegram, data: str, query_id: str) -> Non
             if value == propose.Decision.MANUAL.value:
                 schedule.send_outcome_prompt(telegram, job, telegram.jobs_chat_id)
             elif value == propose.Decision.AUTO.value:
-                with db.connect() as conn:
-                    run = db.latest_proposal_run(conn)
-                if run is not None and run["id"] == run_id and run["mode"] == "auto":
-                    # The batch already got its go signal; a late auto pick
-                    # fills now rather than waiting for tomorrow.
-                    _fill(profile, telegram, [(row["id"], row["dedupe_key"])])
+                # The tap IS the go signal — fill immediately, however old
+                # the batch. There is no Start step anywhere anymore.
+                telegram.send(f"▶️ Filling now: {job.title[:48]} — {job.company}")
+                _fill(profile, telegram, [(row["id"], row["dedupe_key"])])
         elif kind == "m":
             with db.connect() as conn:
                 db.set_proposal_mode(conn, run_id, value)
@@ -199,14 +197,16 @@ def _route_command_line(profile: Profile, telegram, line: str) -> bool:
         with db.connect() as conn:
             db.set_proposal_mode(conn, run["id"], mode.value)
         if mode is propose.Mode.AUTO:
+            # Auto taps fill immediately, so this only catches stragglers
+            # (auto decisions recorded but never acted on).
             pairs = schedule.to_fill(run["id"], mode)
             if pairs:
                 telegram.send(f"▶️ Filling {len(pairs)} from the last batch…")
                 _fill(profile, telegram, pairs)
             else:
                 telegram.send(
-                    "Nothing is marked auto on the last batch — tap ✅ Auto "
-                    "under a job (or `12 auto`) first."
+                    "All caught up — auto picks fill the moment you tap "
+                    "them; there's nothing waiting."
                 )
         else:
             telegram.send("📋 Noted — the list is yours.")
@@ -230,7 +230,8 @@ def _route_command_line(profile: Profile, telegram, line: str) -> bool:
         telegram.send(f"{ordinal} → {choice.value}")
         if job and choice is propose.Decision.MANUAL:
             schedule.send_outcome_prompt(telegram, job, telegram.jobs_chat_id)
-        elif job and choice is propose.Decision.AUTO and run["mode"] == "auto":
+        elif job and choice is propose.Decision.AUTO:
+            telegram.send(f"▶️ Filling now: {job.title[:48]} — {job.company}")
             _fill(profile, telegram, [(row["id"], row["dedupe_key"])])
         return True
 

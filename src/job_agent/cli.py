@@ -1070,7 +1070,9 @@ def batch(
     elif telegram:
         console.print(f"\nAsked on Telegram. Waiting up to {wait} min…")
         mode = schedule.collect(
-            run_id, telegram, wait, on_event=lambda m: console.print(f"  [dim]{m}[/]")
+            run_id, telegram, wait,
+            on_event=lambda m: console.print(f"  [dim]{m}[/]"),
+            profile=profile,
         )
     else:
         console.print("[red]No terminal and no Telegram — nothing to ask.[/]")

@@ -285,6 +285,13 @@ def test_only_explicit_auto_fills(isolated_db) -> None:
     filled = [k.split("-")[0] for _, k in schedule.to_fill(run_id, Mode.AUTO)]
     assert filled == ["Chime"]
 
+    # Auto taps fill immediately and are marked acted; the end-of-batch
+    # sweep must not fill the same application twice.
+    with db.connect() as conn:
+        for pid, _ in schedule.to_fill(run_id, Mode.AUTO):
+            db.mark_acted(conn, pid)
+    assert schedule.to_fill(run_id, Mode.AUTO) == []
+
 
 def test_a_proposed_job_is_never_proposed_again(isolated_db) -> None:
     """Each batch picks up where the last left off — no repeats.

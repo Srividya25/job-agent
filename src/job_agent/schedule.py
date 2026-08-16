@@ -270,14 +270,34 @@ def collect(
     telegram: Telegram,
     wait_minutes: int,
     on_event=None,
+    profile: Profile | None = None,
 ) -> Mode | None:
-    """Poll for the mode and per-job decisions until the batch is settled.
+    """Poll for per-job decisions until the batch is settled.
 
-    Returns the chosen mode, or None if the window closed unanswered.
+    With a profile, an auto decision FILLS THAT JOB IMMEDIATELY — she asked
+    for the tap to be the action, not a vote collected for a later Start
+    button. Filling blocks this loop for a few minutes; taps made meanwhile
+    queue in Telegram and are processed right after, nothing is lost.
+
+    Returns the chosen mode ("Done deciding" maps to auto), or None if the
+    window closed unanswered.
     """
     deadline = time.time() + wait_minutes * 60
     offset = _load_offset()
     mode: Mode | None = None
+
+    def fill_now(row) -> None:
+        if profile is None or row is None:
+            return
+        with db.connect() as conn:
+            job = db.job_by_key(conn, row["dedupe_key"])
+        if job is None:
+            return
+        telegram.send(f"▶️ Filling now: {job.title[:48]} — {job.company}")
+        asyncio.run(fill_batch(
+            profile, [(row["id"], row["dedupe_key"])], telegram,
+            on_event=on_event,
+        ))
 
     while time.time() < deadline:
         texts, offset, callbacks = _fetch_messages(telegram, offset)
@@ -299,7 +319,8 @@ def collect(
                     row = db.set_decision(conn, run_id, ordinal, value)
                 telegram.answer_callback(
                     query_id,
-                    f"{ordinal} → {value}" if row else f"No job {ordinal}",
+                    (f"Filling {ordinal} now…" if value == Decision.AUTO.value
+                     else f"{ordinal} → {value}") if row else f"No job {ordinal}",
                 )
                 if on_event:
                     on_event(f"tap: {ordinal} -> {value}")
@@ -313,6 +334,8 @@ def collect(
                         send_outcome_prompt(
                             telegram, job, chat_id=telegram.jobs_chat_id
                         )
+                elif row is not None and value == Decision.AUTO.value:
+                    fill_now(row)
             elif kind == "b":
                 with db.connect() as conn:
                     n = db.decide_remaining(conn, run_id, value)
@@ -383,6 +406,8 @@ def collect(
                         send_outcome_prompt(
                             telegram, job, chat_id=telegram.jobs_chat_id
                         )
+                elif decision is Decision.AUTO:
+                    fill_now(row)
                 continue
 
             if (window := propose.parse_since_command(text)) is not None:
@@ -432,9 +457,12 @@ def to_fill(run_id: int, mode: Mode) -> list[tuple[int, str]]:
             # default (her 2026-08-16 change; tier "auto" rows from batches
             # recorded before then get no grandfathered default either).
             # Workday ("yours") never fills, even against a typed `N auto` —
-            # the portal needs an account the agent must not hold.
+            # the portal needs an account the agent must not hold. Already
+            # acted-on picks are excluded: auto taps fill immediately now,
+            # and this end-of-batch pass must not fill them twice.
             if r["tier"] != "yours"
             and r["decision"] == Decision.AUTO.value
+            and not r["acted_at"]
         ]
     return []
 

@@ -152,11 +152,11 @@ job-agent chrome    # opens the dedicated Chrome profile (sign into nothing,
 job-agent batch     # discover → score → propose on Telegram
 ```
 
-On Telegram you'll get the ranked list. Tap **Auto** under the jobs the
-agent should fill, **Manual** for ones you'll do yourself, **Ignore** to
-drop — then **Start**. Filled applications come back as a screenshot plus
-every value, and nothing is submitted until you say so. Batches never
-repeat a job you've already been shown.
+On Telegram you'll get the ranked list. Tap **Auto** under a job and it
+starts filling immediately; **Manual** marks it yours (with report-back
+buttons for later); **Ignore** drops it. Filled applications come back as
+a screenshot plus every value, and nothing is submitted until you say so.
+Batches never repeat a job you've already been shown.
 
 ### 8. Schedule it (optional)
 

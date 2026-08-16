@@ -112,13 +112,12 @@ def format_proposal(items: list[Proposed], when: str, total_queued: int) -> list
     head = [
         f"🔎 {when} run — showing {len(items)} of {total_queued} queued",
         "",
-        "You decide every job — nothing fills unless you mark it:",
-        "  `3 auto`    — I fill that one for your review",
+        "You decide every job — and an auto pick starts filling right away:",
+        "  `3 auto`    — I fill that one immediately, for your review",
         "  `3 manual`  — I skip it, you apply to it yourself",
         "  `3 ignore`  — drop it entirely",
         "",
-        "Then send `auto` to start filling your picks, or `manual` to take "
-        "the whole list yourself.",
+        "Anything untouched is left alone.",
         "",
         "I never submit. Every form waits for you to press the button.",
     ]
@@ -249,8 +248,10 @@ def job_buttons(run_id: int, ordinal: int) -> list[list[tuple[str, str]]]:
 
 
 def control_buttons(run_id: int) -> list[list[tuple[str, str]]]:
+    """Auto taps fill immediately, so there is no Start button — these only
+    close out the batch."""
     return [
-        [("▶️ Start — fill what I picked", f"m:{run_id}:auto")],
+        [("✅ Done deciding", f"m:{run_id}:auto")],
         [("📋 All manual — just the list", f"m:{run_id}:manual")],
         [("✖️ Ignore everything undecided", f"b:{run_id}:ignore")],
     ]
