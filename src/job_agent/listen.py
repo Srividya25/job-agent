@@ -269,6 +269,29 @@ def _is_command(line: str) -> bool:
     )
 
 
+def _ready_for_refill(conn) -> list[tuple[int, str]]:
+    """Auto-picked jobs whose last open question just got answered.
+
+    Her flow: a stuck fill asks, she answers on her own schedule, and the
+    application should then come back as a review WITHOUT waiting for the
+    next batch. Idempotent by construction: a refill moves the job out of
+    NEW (to pending_approval or back to stuck), so it cannot match twice.
+    """
+    rows = conn.execute(
+        """select min(p.id) as id, p.dedupe_key from proposals p
+             join jobs j on j.dedupe_key = p.dedupe_key
+            where p.decision = 'auto' and j.status = 'new'
+              and exists (select 1 from pending_questions q
+                          where q.dedupe_key = p.dedupe_key
+                            and q.answered_at is not null)
+              and not exists (select 1 from pending_questions q
+                              where q.dedupe_key = p.dedupe_key
+                                and q.answered_at is null)
+            group by p.dedupe_key"""
+    ).fetchall()
+    return [(r["id"], r["dedupe_key"]) for r in rows]
+
+
 # --------------------------------------------------------------------------
 # resume uploads
 # --------------------------------------------------------------------------
@@ -378,5 +401,21 @@ def listen(profile: Profile, minutes: int = 0, on_event=None) -> None:
                 _route_text(profile, telegram, text)
             except Exception as exc:  # noqa: BLE001
                 telegram.send(f"⚠️ Could not handle that: {type(exc).__name__}: {exc}")
+
+        # If her answers just completed an application's question list,
+        # bring it back as a review NOW — not at the next batch.
+        if texts or callbacks:
+            with db.connect() as conn:
+                ready = _ready_for_refill(conn)
+            if ready:
+                telegram.send(
+                    f"✅ All questions answered — refilling "
+                    f"{len(ready)} application(s) for your review…"
+                )
+                for pair in ready:
+                    try:
+                        _fill(profile, telegram, [pair])
+                    except Exception as exc:  # noqa: BLE001
+                        telegram.send(f"⚠️ Refill failed: {type(exc).__name__}: {exc}")
 
         time.sleep(POLL_SECONDS)

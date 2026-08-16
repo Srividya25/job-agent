@@ -405,6 +405,33 @@ def test_no_gaps_no_message() -> None:
     assert propose.skill_gaps(items) == []
 
 
+def test_answered_auto_jobs_are_ready_for_refill(isolated_db) -> None:
+    """Her flow: stuck -> she answers -> the review comes back NOW."""
+    from job_agent import schedule
+    from job_agent.listen import _ready_for_refill
+
+    db = isolated_db
+    job = make_job(0.8, "Stripe")
+    with db.connect() as conn:
+        db.upsert_job(conn, job)
+    run_id, _ = schedule.open_batch([job], "10:00 am", 1, telegram=None)
+    with db.connect() as conn:
+        db.set_decision(conn, run_id, 1, "auto")
+        qid = db.add_pending(conn, job.dedupe_key, 1, "Visa type?", None, "text", "*")
+
+    with db.connect() as conn:
+        assert _ready_for_refill(conn) == []      # question still open
+        db.answer_pending(conn, qid, "F-1 OPT")
+        db.set_status(conn, job.dedupe_key, JobStatus.NEW)
+    with db.connect() as conn:
+        ready = _ready_for_refill(conn)
+    assert [k for _, k in ready] == [job.dedupe_key]
+
+    with db.connect() as conn:                    # refill moved it out of NEW
+        db.set_status(conn, job.dedupe_key, JobStatus.PENDING_APPROVAL)
+        assert _ready_for_refill(conn) == []
+
+
 def test_handed_off_jobs_are_listed_until_reported(isolated_db) -> None:
     """Manual picks and Workday jobs wait on her outcome; a tap clears them."""
     from job_agent import schedule
