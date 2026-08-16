@@ -598,6 +598,14 @@ def next_approval_ordinal(conn: sqlite3.Connection) -> int:
 def add_approval(
     conn: sqlite3.Connection, ordinal: int, dedupe_key: str, values_json: str
 ) -> int:
+    # One open review per application: a refill pass creates a fresh
+    # snapshot, and leaving the old one open sent her three duplicate
+    # reviews for one Stripe form. The newest is the only submittable one.
+    conn.execute(
+        "update approvals set decision = 'superseded' "
+        "where dedupe_key = ? and decision is null",
+        (dedupe_key,),
+    )
     cur = conn.execute(
         """insert into approvals (ordinal, dedupe_key, values_json, shown_at)
            values (?,?,?,?)""",

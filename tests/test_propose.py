@@ -405,6 +405,17 @@ def test_no_gaps_no_message() -> None:
     assert propose.skill_gaps(items) == []
 
 
+def test_a_new_review_supersedes_the_old_one(isolated_db) -> None:
+    """A refill's fresh snapshot replaces the stale open review — three
+    duplicate Stripe reviews taught this."""
+    db = isolated_db
+    with db.connect() as conn:
+        db.add_approval(conn, 1, "key-x", "[]")
+        db.add_approval(conn, 2, "key-x", "[]")
+        open_now = db.open_approvals(conn)
+    assert [r["ordinal"] for r in open_now] == [2]
+
+
 def test_answered_auto_jobs_are_ready_for_refill(isolated_db) -> None:
     """Her flow: stuck -> she answers -> the review comes back NOW."""
     from job_agent import schedule
