@@ -87,6 +87,9 @@ In `profile.yaml`, every section matters to a different part of the agent:
   under `min_propose_score` overall are never proposed.
 - `resumes` — one entry per resume version, with `target_roles` so the
   right resume wins the right job. Drop the PDFs in `profile/`.
+  Adding one later is one step: `job-agent resume path/to/new.pdf
+  --roles "ML Engineer"` — or just send the PDF to your Telegram
+  bot, optionally captioned `ml: ML Engineer, Data Scientist`.
 
 Both `profile.yaml` and `.env` are gitignored — nothing personal can end
 up in a commit, and a pre-commit hook double-checks that.

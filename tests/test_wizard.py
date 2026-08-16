@@ -1,8 +1,54 @@
-"""The wizard's pure parts: .env editing must never lose existing content."""
+"""The wizard's pure parts: .env editing and resume registration."""
 
 from __future__ import annotations
 
+import pytest
+import yaml
+
+from job_agent import wizard
+from job_agent.listen import parse_resume_caption
 from job_agent.wizard import upsert_env
+
+
+@pytest.fixture
+def tmp_profile(tmp_path, monkeypatch):
+    path = tmp_path / "profile.yaml"
+    path.write_text(yaml.safe_dump({
+        "identity": {"first_name": "Jane", "last_name": "Doe",
+                     "email": "j@e.co"},
+        "resumes": [{"label": "general", "path": "profile/a.pdf",
+                     "target_roles": []}],
+    }))
+    monkeypatch.setattr(wizard, "PROFILE_PATH", path)
+    return path
+
+
+def test_register_resume_appends(tmp_profile) -> None:
+    assert wizard.register_resume(
+        "profile/ml.pdf", "ml", ["ML Engineer"]
+    ) == ""
+    data = yaml.safe_load(tmp_profile.read_text())
+    assert data["resumes"][-1] == {
+        "label": "ml", "path": "profile/ml.pdf", "target_roles": ["ML Engineer"]
+    }
+    assert data["resumes"][0]["label"] == "general"  # untouched
+
+
+def test_register_resume_refuses_duplicate_label(tmp_profile) -> None:
+    problem = wizard.register_resume("profile/x.pdf", "general", [])
+    assert "already exists" in problem
+    assert len(yaml.safe_load(tmp_profile.read_text())["resumes"]) == 1
+
+
+@pytest.mark.parametrize(
+    ("caption", "expected"),
+    [("ml: ML Engineer, Data Scientist", ("ml", ["ML Engineer", "Data Scientist"])),
+     ("frontend: Frontend Engineer", ("frontend", ["Frontend Engineer"])),
+     ("", ("", [])),
+     ("just some words", ("", []))],
+)
+def test_resume_caption_parsing(caption, expected) -> None:
+    assert parse_resume_caption(caption) == expected
 
 
 def test_appends_a_new_key() -> None:

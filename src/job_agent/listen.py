@@ -25,6 +25,7 @@ What it handles, in routing order:
 from __future__ import annotations
 
 import asyncio
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -268,6 +269,65 @@ def _is_command(line: str) -> bool:
 
 
 # --------------------------------------------------------------------------
+# resume uploads
+# --------------------------------------------------------------------------
+
+_CAPTION = re.compile(r"^\s*([\w-]{1,30})\s*:\s*(.+)$")
+
+
+def parse_resume_caption(caption: str) -> tuple[str, list[str]]:
+    """"ml: ML Engineer, Data Scientist" -> ("ml", [roles]).
+
+    No caption (or no colon) means no label/roles were given; the label
+    falls back to the filename and the roles to the general preference list.
+    """
+    if match := _CAPTION.match(caption or ""):
+        roles = [part.strip() for part in match.group(2).split(",") if part.strip()]
+        return match.group(1).lower(), roles
+    return "", []
+
+
+def _handle_document(telegram, doc: dict, caption: str) -> None:
+    """A file sent to the bot: if it's a PDF, register it as a resume."""
+    name = doc.get("file_name") or "resume.pdf"
+    if not name.lower().endswith(".pdf"):
+        telegram.send(
+            "📄 I only take resumes as PDF. Convert it and send again."
+        )
+        return
+    content = telegram.download_file(doc.get("file_id", ""))
+    if content is None:
+        telegram.send("⚠️ Could not download that file from Telegram — try again.")
+        return
+
+    from .config import ROOT
+    from .wizard import check_summary, register_resume
+
+    label, roles = parse_resume_caption(caption)
+    label = label or Path(name).stem.lower().replace(" ", "_")[:30]
+    dest = ROOT / "profile" / name.replace("/", "_")
+    stem, n = dest.stem, 1
+    while dest.exists():
+        n += 1
+        dest = dest.with_name(f"{stem}-{n}.pdf")
+    dest.write_bytes(content)
+
+    if problem := register_resume(f"profile/{dest.name}", label, roles):
+        dest.unlink(missing_ok=True)
+        telegram.send(f"⚠️ Not added: {problem}.")
+        return
+    telegram.send(
+        f"📎 Resume saved: {dest.name} as “{label}”\n"
+        + (f"Targets: {', '.join(roles)}\n" if roles else
+           "No target roles given — it competes on general fit. To set "
+           "them, send the PDF again with a caption like\n"
+           "  ml: ML Engineer, Data Scientist\n")
+        + check_summary()
+        + "\nIt joins the scoring from the next batch."
+    )
+
+
+# --------------------------------------------------------------------------
 # the loop
 # --------------------------------------------------------------------------
 
@@ -288,8 +348,19 @@ def listen(profile: Profile, minutes: int = 0, on_event=None) -> None:
             time.sleep(20)
             continue
 
-        texts, offset, callbacks = schedule._fetch_messages(telegram, offset)
+        documents: list[tuple[dict, str]] = []
+        texts, offset, callbacks = schedule._fetch_messages(
+            telegram, offset, documents=documents
+        )
         _save_offset(offset)
+
+        for doc, caption in documents:
+            if on_event:
+                on_event(f"file: {doc.get('file_name', '?')}")
+            try:
+                _handle_document(telegram, doc, caption)
+            except Exception as exc:  # noqa: BLE001
+                telegram.send(f"⚠️ Resume upload failed: {type(exc).__name__}: {exc}")
 
         for data, query_id in callbacks:
             if on_event:

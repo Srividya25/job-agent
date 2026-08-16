@@ -218,6 +218,26 @@ class Telegram:
         except httpx.HTTPError:
             return False
 
+    def download_file(self, file_id: str, max_bytes: int = 15_000_000) -> bytes | None:
+        """Fetch a file the user sent to the bot (e.g. a resume PDF)."""
+        try:
+            r = httpx.get(
+                self._url("getFile"), params={"file_id": file_id}, timeout=TIMEOUT
+            )
+            if r.status_code != 200:
+                return None
+            path = (r.json().get("result") or {}).get("file_path")
+            if not path:
+                return None
+            f = httpx.get(
+                f"{API}/file/bot{self.token}/{path}", timeout=120.0
+            )
+            if f.status_code != 200 or len(f.content) > max_bytes:
+                return None
+            return f.content
+        except httpx.HTTPError:
+            return None
+
     # ------------------------------------------------------------------
     def poll(self, offset: int = 0) -> tuple[list[Reply], int]:
         """Fetch replies since `offset`. Returns (replies, next_offset).

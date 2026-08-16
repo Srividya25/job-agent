@@ -140,13 +140,18 @@ def apply_since_command(telegram, raw: str) -> bool:
 
 
 def _fetch_messages(
-    telegram: Telegram, offset: int
+    telegram: Telegram, offset: int,
+    documents: list[tuple[dict, str]] | None = None,
 ) -> tuple[list[str], int, list[tuple[str, str]]]:
     """Texts and button taps since `offset`, plus the new offset.
 
     Returns (texts, next_offset, callbacks) where each callback is
     (callback_data, callback_query_id). Typed replies still work — the
     buttons are an easier path to the same decisions, not a replacement.
+
+    `documents`, when given, collects (document dict, caption) for files the
+    user sent — how a new resume arrives by phone. Callers that don't pass
+    it simply skip file messages, as they always did.
     """
     try:
         response = httpx.get(
@@ -182,6 +187,8 @@ def _fetch_messages(
             continue
         if text := (message.get("text") or "").strip():
             texts.append(text)
+        elif (doc := message.get("document")) and documents is not None:
+            documents.append((doc, (message.get("caption") or "").strip()))
     return texts, next_offset, callbacks
 
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import shutil
+from pathlib import Path
 
 import typer
 from rich.console import Console
@@ -135,6 +136,42 @@ def confirm_cmd(
         colour = {"confirmed": "green", "rejected": "red"}.get(f.kind, "cyan")
         console.print(f"  [{colour}]{f.kind:9}[/] {f.company} · {f.title[:40]}")
         console.print(f"            [dim]{f.subject[:70]}[/]")
+
+
+@app.command("resume")
+def resume_cmd(
+    pdf: str = typer.Argument(..., help="Path to the resume PDF."),
+    label: str = typer.Option("", help="Short name; defaults to the filename."),
+    roles: str = typer.Option(
+        "", help="Comma-separated target roles this resume should win."
+    ),
+) -> None:
+    """Add a resume: copy it into profile/, register it, and verify it.
+
+    The other easy path is Telegram: send the PDF to the bot, optionally
+    with a caption like `ml: ML Engineer, Data Scientist`.
+    """
+    from .wizard import check_summary, register_resume
+
+    source = Path(pdf).expanduser()
+    if not source.exists() or source.suffix.lower() != ".pdf":
+        console.print(f"[red]Not a PDF I can find: {source}[/]")
+        raise typer.Exit(1)
+    _profile_or_exit()
+
+    dest = ROOT / "profile" / source.name
+    if source.resolve() != dest.resolve():
+        shutil.copy(source, dest)
+    name = label or source.stem.lower().replace(" ", "_")
+    wanted = [part.strip() for part in roles.split(",") if part.strip()]
+
+    if problem := register_resume(f"profile/{dest.name}", name, wanted):
+        console.print(f"[red]Not added: {problem}.[/]")
+        raise typer.Exit(1)
+    console.print(f"[green]Added[/] {dest.name} as “{name}”"
+                  + (f" targeting {', '.join(wanted)}" if wanted else ""))
+    console.print(check_summary())
+    console.print("It joins the scoring from the next batch.")
 
 
 @app.command("listen")

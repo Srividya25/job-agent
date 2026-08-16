@@ -65,6 +65,48 @@ def _csv(raw: str) -> list[str]:
     return [part.strip() for part in raw.split(",") if part.strip()]
 
 
+def register_resume(path_rel: str, label: str, roles: list[str]) -> str:
+    """Append a resume entry to profile.yaml. Returns a problem or "".
+
+    Shared by `job-agent resume add` and the Telegram upload path. The
+    profile cache is cleared so a long-running process (the listener) sees
+    the new resume immediately.
+    """
+    data = yaml.safe_load(PROFILE_PATH.read_text()) or {}
+    resumes = data.setdefault("resumes", [])
+    if any(r.get("label") == label for r in resumes):
+        return f"a resume labelled {label!r} already exists"
+    resumes.append({"label": label, "path": path_rel, "target_roles": roles})
+    PROFILE_PATH.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True))
+
+    from .config import load_profile
+
+    load_profile.cache_clear()
+    return ""
+
+
+def check_summary() -> str:
+    """One-line profile-vs-resume verdict, for confirmations."""
+    try:
+        from .config import load_profile
+        from .match.resume import load_resumes
+        from .profile_check import Level, check_all
+
+        profile = load_profile()
+        problems = [
+            f"{label}: {f.field} — {f.detail}"
+            for label, findings in check_all(
+                profile, load_resumes(profile.resumes)
+            ).items()
+            for f in findings if f.level is Level.ERROR
+        ]
+        if problems:
+            return "⚠️ Check found contradictions:\n" + "\n".join(problems[:4])
+        return "✅ Profile and resumes agree."
+    except Exception as exc:  # noqa: BLE001 - a broken check is worth reporting
+        return f"⚠️ Could not run the check: {exc}"
+
+
 # --------------------------------------------------------------------------
 # profile sections
 # --------------------------------------------------------------------------
