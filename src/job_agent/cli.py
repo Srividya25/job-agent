@@ -1443,8 +1443,7 @@ def with_me_cmd(
                 if telegram:
                     texts, offset, _ = schedule._fetch_messages(telegram, offset)
                     schedule._save_offset(offset)
-                    done = any(t.strip().lower() in {"done", "finished", "ok done"}
-                               for t in texts)
+                    done = any(schedule.is_done_signal(t) for t in texts)
                 done = done or schedule.hand_done_signalled()
                 if not done:
                     await asyncio.sleep(10)

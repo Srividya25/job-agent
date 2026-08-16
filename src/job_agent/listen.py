@@ -258,6 +258,15 @@ def _route_command_line(profile: Profile, telegram, line: str) -> bool:
 
 
 def _route_text(profile: Profile, telegram, text: str) -> None:
+    # A "done" that reaches the LISTENER means the hold it was meant for is
+    # running in another process (a window session, a batch hold) whose
+    # offset lost the race. The hand_done flag file is the cross-process
+    # channel every hold already checks — relay it instead of dropping it.
+    if schedule.is_done_signal(text) and len(text.split()) <= 4:
+        (data_dir() / "hand_done").touch()
+        telegram.send("✅ Got it — wrapping up the open window.")
+        return
+
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     commands = [line for line in lines if _is_command(line)]
     if commands and len(commands) == len(lines):

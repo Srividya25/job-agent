@@ -502,8 +502,8 @@ async def _hold_for_hand_fill(
             from .notify.telegram import parse_replies
 
             apply_replies(parse_replies(text), telegram)
-        done = any(t.strip().lower() in {"done", "finished", "ok done"}
-                   for t in texts) or schedule.hand_done_signalled()
+        done = any(schedule.is_done_signal(t) for t in texts) \
+            or schedule.hand_done_signalled()
         if not done:
             await asyncio.sleep(10)
 

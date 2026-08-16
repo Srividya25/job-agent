@@ -352,6 +352,24 @@ def test_window_set_from_telegram_persists(isolated_db) -> None:
     assert any("⚠️" in m for m in t.sent)
 
 
+@pytest.mark.parametrize(("text", "expected"), [
+    ("done", True),
+    ("done submitted stripe", True),        # the real message that was ignored
+    ("im done", True),
+    ("finished!", True),
+    ("ok submitted", True),
+    ("not done yet", False),
+    ("almost done", False),
+    ("how do I know it's done?", False),
+    ("2 Yes", False),
+    ("", False),
+])
+def test_done_signal_understands_her_words(text: str, expected: bool) -> None:
+    from job_agent.schedule import is_done_signal
+
+    assert is_done_signal(text) is expected
+
+
 def test_missed_slot_detection() -> None:
     """Powered-off machines skip launchd calendar jobs; catch-up owes the
     latest uncovered slot and nothing when the last batch covered it."""

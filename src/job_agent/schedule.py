@@ -18,6 +18,7 @@ run.consume_replies still needs.
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -685,18 +686,42 @@ def send_outcome_prompt(telegram, job, chat_id: str | None = None) -> None:
     )
 
 
+_DONE = re.compile(r"\b(done|finished|submitted)\b", re.I)
+_NOT_DONE = re.compile(r"\b(not|n[o']t|almost|nearly|yet|when|how)\b", re.I)
+
+
+def is_done_signal(text: str) -> bool:
+    """Whether a message means "I finished" — in her words, not a keyword.
+
+    The exact-match set {"done", "finished", "ok done"} silently ignored
+    her real message "done submitted stripe", and the hold sat out its full
+    timeout. Anything containing done/finished/submitted counts, unless it
+    is negated or a question ("not done yet", "how do I know it's done?").
+    """
+    text = (text or "").strip()
+    return bool(text and _DONE.search(text) and not _NOT_DONE.search(text))
+
+
 def hand_done_signalled() -> bool:
     """Whether `done` was given outside Telegram.
 
     She typed `done` into the CLI once and the hold — listening only to
     Telegram — sat there until timeout. Any channel that can touch this file
-    (the CLI, the assistant, a script) can now end a hold: the file is the
-    signal, and consuming it deletes it.
+    (the CLI, the assistant, the listener's relay) can now end a hold: the
+    file is the signal, and consuming it deletes it.
+
+    A flag older than 15 minutes is discarded unconsumed — a "done" relayed
+    when no hold was running must not instantly close the NEXT day's window.
     """
+    import time as _time
+
     flag = data_dir() / "hand_done"
     if flag.exists():
         try:
+            stale = _time.time() - flag.stat().st_mtime > 15 * 60
             flag.unlink()
+            if stale:
+                return False
         except OSError:
             pass
         return True
@@ -1017,8 +1042,7 @@ async def window_session(
                     from .run import apply_replies
 
                     apply_replies(parse_replies(text), telegram)
-                done = any(t.strip().lower() in {"done", "finished", "ok done"}
-                           for t in texts)
+                done = any(is_done_signal(t) for t in texts)
             done = done or hand_done_signalled()
             if not done:
                 await asyncio.sleep(10)
