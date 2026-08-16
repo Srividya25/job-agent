@@ -1028,6 +1028,15 @@ def batch(
             "[yellow]Nothing new since the last batch.[/]" if not repeats
             else "[yellow]Nothing queued.[/]"
         )
+        # Say so on Telegram too. A scheduled run that finds nothing and
+        # sends nothing is indistinguishable from a run that never happened
+        # — she opened her laptop, saw no 3pm batch, and rightly asked
+        # whether the system was broken.
+        if telegram and not interactive:
+            telegram.send(
+                f"🔎 {label or schedule.label_for()} run — nothing new since "
+                "the last batch. All quiet; next check at the next slot."
+            )
         raise typer.Exit()
 
     name = label or schedule.label_for()
