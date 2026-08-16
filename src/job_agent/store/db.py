@@ -456,6 +456,12 @@ def open_questions(conn: sqlite3.Connection) -> list[sqlite3.Row]:
 # --------------------------------------------------------------------------
 
 
+def latest_proposal_run(conn: sqlite3.Connection) -> sqlite3.Row | None:
+    return conn.execute(
+        "select * from proposal_runs order by id desc limit 1"
+    ).fetchone()
+
+
 def last_proposal_started(conn: sqlite3.Connection) -> datetime | None:
     row = conn.execute("select max(started_at) m from proposal_runs").fetchone()
     try:

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- The standing Telegram listener: answers taps and typed commands within
+     seconds, all day, and stands down automatically while a batch runs.
+     KeepAlive restarts it if it ever dies.
+
+     Setup: replace /PATH/TO/job-agent, then
+       cp scripts/jobagent.listen.plist.example \
+         ~/Library/LaunchAgents/com.YOURNAME.jobagent.listen.plist
+       launchctl load ~/Library/LaunchAgents/com.YOURNAME.jobagent.listen.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.YOURNAME.jobagent.listen</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/PATH/TO/job-agent/.venv/bin/job-agent</string>
+    <string>listen</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/PATH/TO/job-agent</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/PATH/TO/job-agent/data/listen.log</string>
+  <key>StandardErrorPath</key>
+  <string>/PATH/TO/job-agent/data/listen.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+</dict>
+</plist>

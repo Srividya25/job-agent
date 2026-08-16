@@ -137,6 +137,31 @@ def confirm_cmd(
         console.print(f"            [dim]{f.subject[:70]}[/]")
 
 
+@app.command("listen")
+def listen_cmd(
+    minutes: int = typer.Option(0, help="Stop after N minutes; 0 = run forever."),
+) -> None:
+    """Answer Telegram around the clock.
+
+    Handles taps and typed commands within seconds — decisions, approvals,
+    outcome reports, `window 3d`, and form answers — and stands down
+    automatically whenever a batch is running. Meant to live under launchd
+    (see scripts/jobagent.listen.plist.example).
+    """
+    from .listen import listen
+
+    profile = _profile_or_exit()
+    console.print("Listening… (Ctrl-C to stop)")
+    try:
+        listen(profile, minutes=minutes,
+               on_event=lambda m: console.print(f"  [dim]{m}[/]"))
+    except RuntimeError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(1)
+    except KeyboardInterrupt:
+        console.print("Stopped.")
+
+
 @app.command("yours")
 def yours_cmd(
     remind: bool = typer.Option(

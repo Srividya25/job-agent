@@ -81,7 +81,13 @@ def consume_replies(telegram: Telegram | None) -> int:
     replies, next_offset = telegram.poll(offset)
     if not replies:
         return 0
+    applied = apply_replies(replies, telegram)
+    _save_offset(next_offset)
+    return applied
 
+
+def apply_replies(replies, telegram) -> int:
+    """Apply already-fetched replies. Shared with the standing listener."""
     applied = 0
     unmatched: list[str] = []
 
@@ -145,7 +151,6 @@ def consume_replies(telegram: Telegram | None) -> int:
             "or check `job-agent status`."
         )
 
-    _save_offset(next_offset)
     return applied
 
 
