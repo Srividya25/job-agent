@@ -155,6 +155,30 @@ def test_cache_keeps_a_real_option() -> None:
     assert found and found.answer == "San Francisco HQ"
 
 
+@pytest.mark.parametrize("junk", [
+    "5ba59b87-591b-4860-90aa-560d63ab12cd",       # Ashby option UUID
+    "847C4F54-C9B3-42D8-B0B2-04A749FE0011",       # case-insensitive
+    "d38ee6d90269a45be9d38ee6d90269a4",           # long opaque hex token
+])
+def test_cache_refuses_machine_ids(junk: str) -> None:
+    """A Notion/Ashby form surfaced option UUIDs as option text, and taps
+    cached raw ids as the answers to real questions — including work
+    authorization. No human answer looks like a UUID."""
+    from job_agent.resolve import cache
+
+    cache.remember("Do you have experience with LLMs?", junk, "uuid-test", "radio")
+    assert cache.lookup("Do you have experience with LLMs?", "uuid-test") is None
+
+
+def test_cache_keeps_short_hexish_real_answers() -> None:
+    """"cafe" or "2021" must not be swept up by the machine-id guard."""
+    from job_agent.resolve import cache
+
+    cache.remember("Favorite word?", "cafe", "uuid-test-2", "text")
+    found = cache.lookup("Favorite word?", "uuid-test-2")
+    assert found and found.answer == "cafe"
+
+
 def test_cache_refuses_ambiguous_date_labels() -> None:
     """"Start Date" names both the month and the year select; a cache entry
     under it answers both halves with whichever was written last. This

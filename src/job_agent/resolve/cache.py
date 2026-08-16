@@ -46,6 +46,13 @@ _FILLER = re.compile(r"\b(please|kindly|required|optional)\b", re.I)
 # Labels naming half of a split date control — see remember().
 _DATE_LABEL = re.compile(r"^(start|end|graduation)\s*(date|month|year)$", re.I)
 
+# UUIDs and long opaque hex/id tokens — machine values, never human answers.
+_MACHINE_ID = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    r"|^[0-9a-f]{16,}$",
+    re.I,
+)
+
 
 def normalize_question(text: str) -> str:
     """Collapse cosmetic variation so equivalent questions share a key."""
@@ -120,6 +127,14 @@ def remember(
     # cached against real questions, where best_option would later match them
     # onto an arbitrary choice.
     if answer.strip().lower() in {"checked", "on", "true", "false"}:
+        return
+
+    # Machine identifiers, not answers. Ashby yes/no cards surfaced their
+    # option UUIDs as the option text on one Notion form, and three tapped
+    # "answers" arrived here as raw ids ("5ba59b87-…") — poisoning the cache
+    # for questions like "Do you have experience with LLMs?". No human
+    # answer looks like a UUID or a long opaque hex token.
+    if _MACHINE_ID.match(answer.strip()):
         return
 
     # A date split into month and year selects shares one label, so any cache
