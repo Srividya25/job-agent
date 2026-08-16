@@ -180,6 +180,7 @@ def profile_facts(profile: Profile) -> str:
         f"Years of experience: {x.years:g}" if x.years else "",
         f"Current title: {x.current_title}" if x.current_title else "",
     ]
+    lines += [f"Highlight: {h}" for h in x.highlights]
     for e in profile.education:
         parts = [e.school, e.degree, e.field]
         span = ""

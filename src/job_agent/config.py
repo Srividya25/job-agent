@@ -76,6 +76,10 @@ class Education(BaseModel):
 class Experience(BaseModel):
     years: float = 0
     current_title: str = ""
+    # Short, true, one-line achievements ("Built an LLM-powered X"). They
+    # feed the Tier 3 fact sheet, so essay drafts can cite something real
+    # instead of producing generic enthusiasm.
+    highlights: list[str] = Field(default_factory=list)
 
 
 class Skills(BaseModel):
