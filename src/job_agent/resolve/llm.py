@@ -39,7 +39,11 @@ DEFAULT_ANTHROPIC_MODEL = "claude-opus-5"
 OLLAMA_URL = "http://localhost:11434"
 DEFAULT_OLLAMA_MODEL = "qwen3.6:latest"
 
-TIMEOUT = 90.0  # local models think slowly; a batch of ten fields takes a while
+# Local models are slow: qwen3.6 on a laptop takes ~2 minutes for one
+# batched call even with thinking disabled. 90s timed out on every real
+# call, which silently reduced Tier 3 to "unavailable" while the status
+# table said available.
+TIMEOUT = 240.0
 MAX_FIELDS = 25  # one screen of questions; anything bigger is a broken extract
 
 PROVIDERS = ("auto", "anthropic", "qwen", "off")
@@ -292,6 +296,10 @@ def ask_qwen(prompt: str, post=httpx.post) -> dict[str, str]:
                 # Ollama accepts a JSON schema in `format` and constrains
                 # decoding to it — same guarantee as Anthropic's json_schema.
                 "format": _SCHEMA,
+                # Thinking models burn the whole time budget reasoning
+                # before emitting a token of JSON; these answers are lookups
+                # from a fact sheet, not puzzles.
+                "think": False,
                 "options": {"temperature": 0},
                 "messages": [
                     {"role": "system", "content": _SYSTEM},
