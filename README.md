@@ -158,17 +158,26 @@ buttons for later); **Ignore** drops it. Filled applications come back as
 a screenshot plus every value, and nothing is submitted until you say so.
 Batches never repeat a job you've already been shown.
 
-### 8. Schedule it (optional)
+### 8. Run it around the clock (recommended)
 
-macOS: copy `scripts/jobagent.batch.plist.example` to
-`~/Library/LaunchAgents/`, replace the placeholder paths (instructions in
-the file), and `launchctl load` it — the agent then proposes twice a day.
-A slot missed while the Mac was asleep runs on wake; for slots missed
-while it was powered **off**, also install
-`scripts/jobagent.catchup.plist.example` — it runs `batch --catch-up` at
-login, which fires only when a scheduled slot actually went uncovered.
-Linux: an equivalent cron line is
-`0 10,15 * * * cd /path/to/job-agent && .venv/bin/job-agent batch`.
+Three LaunchAgents (macOS; templates in `scripts/`, instructions inside
+each) make the agent fully hands-off:
+
+- **`jobagent.batch.plist.example`** — proposes twice a day (10:00, 15:00).
+- **`jobagent.listen.plist.example`** — the standing listener: answers
+  your Telegram taps and messages within seconds all day. An **Auto tap
+  fills that job immediately**, whenever you tap it; answers to stuck
+  questions refill the application on the spot; resume PDFs sent to the
+  bot are registered. Without it, replies are only processed while a
+  batch happens to be running.
+- **`jobagent.catchup.plist.example`** — at login, fires any batch slot
+  missed while the machine was powered off (sleep is already handled:
+  launchd runs those on wake).
+
+For each: copy to `~/Library/LaunchAgents/`, replace the placeholder
+paths, and `launchctl load` it. Linux equivalents: the cron line
+`0 10,15 * * * cd /path/to/job-agent && .venv/bin/job-agent batch` plus
+`job-agent listen` under systemd or in a tmux session.
 
 ### Troubleshooting
 
