@@ -913,11 +913,16 @@ def batch(
             raise typer.Exit()
         console.print(f"Catching up the missed {owed:%-I:%M %p} slot…")
 
+    # --since wins; otherwise the standing window she set from Telegram
+    # ("window 3d") applies; otherwise no window.
+    since = since or schedule.load_window()
     try:
         window = parse_since(since)
     except ValueError as exc:
         console.print(f"[red]{exc}[/]")
         raise typer.Exit(1) from exc
+    if window:
+        console.print(f"[dim]window: last {since}[/]")
 
     if discover_first:
         console.print("Polling boards…")
@@ -1213,6 +1218,12 @@ def _watch_approvals(profile, telegram, minutes: int) -> None:
             console.print(f"  #{n} → {result}")
 
         for text in texts:
+            from . import propose as propose_mod
+
+            if (window := propose_mod.parse_since_command(text)) is not None:
+                schedule.apply_since_command(telegram, window)
+                continue
+
             with db.connect() as conn:
                 open_rows = db.open_approvals(conn)
 

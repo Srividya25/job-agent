@@ -309,6 +309,42 @@ def test_a_proposed_job_is_never_proposed_again(isolated_db) -> None:
     assert [j.company for j in fresh] == ["Chime"]
 
 
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [("window 3d", "3d"), ("since 24h", "24h"), ("WINDOW 1w", "1w"),
+     ("window all", "all"), ("windows update", None), ("3d", None)],
+)
+def test_parse_since_command(text: str, expected: str | None) -> None:
+    assert propose.parse_since_command(text) == expected
+
+
+def test_since_command_is_never_a_form_answer() -> None:
+    """Typed at the wrong moment, "window 3d" must not be cached as the
+    answer to an open application question."""
+    assert propose.is_decision_reply("window 3d")
+
+
+def test_window_set_from_telegram_persists(isolated_db) -> None:
+    from job_agent import schedule
+
+    class T:
+        sent: list[str] = []
+
+        def send(self, text, buttons=None, chat_id=None):
+            self.sent.append(text)
+
+    t = T()
+    assert schedule.apply_since_command(t, "3d")
+    assert schedule.load_window() == "3d"
+    assert schedule.apply_since_command(t, "all")
+    assert schedule.load_window() == ""
+    # Garbage is rejected with a message, and the setting is untouched.
+    schedule.apply_since_command(t, "3d")
+    assert not schedule.apply_since_command(t, "fortnightly")
+    assert schedule.load_window() == "3d"
+    assert any("⚠️" in m for m in t.sent)
+
+
 def test_missed_slot_detection() -> None:
     """Powered-off machines skip launchd calendar jobs; catch-up owes the
     latest uncovered slot and nothing when the last batch covered it."""

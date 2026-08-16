@@ -340,6 +340,9 @@ def format_cli(items: list[Proposed]) -> str:
 _MODE = re.compile(
     r"^\s*(?:mode\s+)?(auto|manual)(?:\s*[-\s]?\s*apply(?:ing)?)?\s*$", re.I
 )
+# "window 3d" / "since 24h" / "window all" — sets the standing freshness
+# window for future batches, straight from the phone.
+_SINCE_CMD = re.compile(r"^\s*(?:window|since)\s+(\S{1,12})\s*$", re.I)
 _BULK = re.compile(r"^\s*rest\s+(auto|manual|ignore)\s*$", re.I)
 _PER_JOB = re.compile(r"^\s*#?(\d{1,3})\s*[.):\-]?\s+(auto|manual|ignore|skip)\s*$", re.I)
 
@@ -348,6 +351,13 @@ def parse_mode(text: str) -> Mode | None:
     """"auto" / "manual" / "mode auto" -> the batch mode."""
     if match := _MODE.match(text or ""):
         return Mode(match.group(1).lower())
+    return None
+
+
+def parse_since_command(text: str) -> str | None:
+    """"window 3d" -> "3d". The value is validated where it is applied."""
+    if match := _SINCE_CMD.match(text or ""):
+        return match.group(1).lower()
     return None
 
 
@@ -378,4 +388,6 @@ def is_decision_reply(text: str) -> bool:
     text = (text or "").strip()
     return bool(
         parse_mode(text) or parse_bulk(text) or parse_decision(text)
+        # "window 3d" must never be cached as a form answer either.
+        or parse_since_command(text)
     )

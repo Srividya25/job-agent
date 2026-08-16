@@ -93,6 +93,15 @@ def consume_replies(telegram: Telegram | None) -> int:
         lone = open_now[0]["ordinal"] if len(open_now) == 1 else None
 
         for reply in replies:
+            # "window 3d" is a standing setting she may type at any quiet
+            # moment; this poller may be the first to see it, so it applies
+            # it rather than merely not-eating it.
+            if (window := propose.parse_since_command(reply.raw)) is not None:
+                from . import schedule
+
+                schedule.apply_since_command(telegram, window)
+                continue
+
             # "6 ignore" / "auto" belong to a proposal batch and "submit 3"
             # to an approval — none of them are form answers. Without this,
             # "6 ignore" would be stored as the answer text of whichever open

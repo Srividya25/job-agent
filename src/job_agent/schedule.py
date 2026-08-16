@@ -97,6 +97,48 @@ def _save_offset(value: int) -> None:
         pass
 
 
+def _window_path() -> Path:
+    return data_dir() / "batch_window"
+
+
+def load_window() -> str:
+    """The standing freshness window ("3d", "24h", …); "" = no window."""
+    try:
+        value = _window_path().read_text().strip()
+        return "" if value in {"", "all", "any"} else value
+    except OSError:
+        return ""
+
+
+def save_window(value: str) -> None:
+    _window_path().write_text(value.strip())
+
+
+def apply_since_command(telegram, raw: str) -> bool:
+    """Handle a typed "window 3d" from any listener. Returns True if valid.
+
+    Validated with the same parser the CLI uses, so the vocabulary is one
+    list: 24h, 3d, 1w, 30d, all, or bare hours/days/weeks like 12h or 2w.
+    """
+    from .models import parse_since
+
+    try:
+        hours = parse_since(raw)
+    except ValueError as exc:
+        if telegram:
+            telegram.send(f"⚠️ {exc}")
+        return False
+    save_window("" if hours == 0 else raw)
+    if telegram:
+        telegram.send(
+            "🗓 Got it — batches now show every queued job."
+            if hours == 0 else
+            f"🗓 Got it — from the next batch on, only jobs from the last "
+            f"{raw}. Send `window all` to clear."
+        )
+    return True
+
+
 def _fetch_messages(
     telegram: Telegram, offset: int
 ) -> tuple[list[str], int, list[tuple[str, str]]]:
@@ -334,6 +376,10 @@ def collect(
                         send_outcome_prompt(
                             telegram, job, chat_id=telegram.jobs_chat_id
                         )
+                continue
+
+            if (window := propose.parse_since_command(text)) is not None:
+                apply_since_command(telegram, window)
                 continue
 
             # Anything else. Polling has already advanced the offset, so this
