@@ -907,6 +907,13 @@ def hold_for_answers(
                     on_event(f"tap: {data[:20]}")
             else:
                 telegram.answer_callback(query_id, "Not expecting that right now.")
+        # Typed answers count here exactly as taps do — fetching advanced
+        # the offset, so an unapplied answer is an eaten answer.
+        for text in texts:
+            from .notify.telegram import parse_replies
+            from .run import apply_replies
+
+            apply_replies(parse_replies(text), telegram)
         remaining = open_count()
         if remaining == 0:
             if on_event:
@@ -977,6 +984,11 @@ async def window_session(
                 _save_offset(offset)
                 for data, query_id in callbacks:
                     handle_common_callback(telegram, data, query_id)
+                for text in texts:
+                    from .notify.telegram import parse_replies
+                    from .run import apply_replies
+
+                    apply_replies(parse_replies(text), telegram)
                 done = any(t.strip().lower() in {"done", "finished", "ok done"}
                            for t in texts)
             done = done or hand_done_signalled()

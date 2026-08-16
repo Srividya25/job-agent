@@ -495,6 +495,13 @@ async def _hold_for_hand_fill(
         schedule._save_offset(offset)
         for data, query_id in callbacks:
             schedule.handle_common_callback(telegram, data, query_id)
+        # Typed answers during the hold are answers, not noise: fetching
+        # them advances the offset, so anything not applied here is gone
+        # for good. Real "1 TensorFlow…" replies were silently discarded.
+        for text in texts:
+            from .notify.telegram import parse_replies
+
+            apply_replies(parse_replies(text), telegram)
         done = any(t.strip().lower() in {"done", "finished", "ok done"}
                    for t in texts) or schedule.hand_done_signalled()
         if not done:
