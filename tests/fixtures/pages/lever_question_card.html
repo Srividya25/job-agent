@@ -1,0 +1,70 @@
+<!doctype html>
+<!--
+  Trimmed from Zoox's live Lever application. Lever's custom questions use no
+  <fieldset> at all: each is an <li class="application-question"> whose text
+  lives in <div class="application-label">, and the inputs are named
+  cards[<uuid>][fieldN].
+
+  With nothing else to go on, every label strategy fell through to humanizing
+  that name, so a required question was presented to the user as
+  "cards 18631c8a d2a4 41d9 ba8a 8fccf4193494 f". The free-text follow-up box
+  was worse: _label_from_nearby grabbed the preceding option and labelled it
+  "No".
+-->
+<html>
+  <body>
+    <form>
+      <ul>
+        <li class="application-question custom-question">
+          <div>
+            <div class="application-label full-width multiple-select">
+              <div class="text">
+                Are you currently enrolled in a 2-year or 4-year college
+                program?
+              </div>
+            </div>
+            <div class="application-field">
+              <!-- Both options share one name and differ by value; that is
+                   what real Lever emits, and it is what makes them group. -->
+              <label
+                ><input
+                  type="checkbox"
+                  name="cards[18631c8a-d2a4-41d9-ba8a-8fccf4193494][field0]"
+                  value="Yes"
+                />Yes</label
+              >
+              <label
+                ><input
+                  type="checkbox"
+                  name="cards[18631c8a-d2a4-41d9-ba8a-8fccf4193494][field0]"
+                  value="No"
+                />No</label
+              >
+            </div>
+          </div>
+        </li>
+
+        <li class="application-question custom-question">
+          <div>
+            <div class="application-label full-width">
+              <div class="text">
+                Do you currently receive any active funding?
+              </div>
+            </div>
+            <div class="application-field">
+              <input
+                type="text"
+                name="cards[84336606-884c-4144-b749-c332462ac00d][field0]"
+                placeholder="Type your response"
+              />
+            </div>
+          </div>
+        </li>
+      </ul>
+
+      <!-- A normally-labelled field, to prove nothing else regressed. -->
+      <label for="full">Full name</label>
+      <input id="full" name="name" type="text" required />
+    </form>
+  </body>
+</html>

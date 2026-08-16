@@ -1,0 +1,76 @@
+<!doctype html>
+<!--
+  Trimmed from Plaid's live Ashby application. Two things here are unusual and
+  are exactly what broke grouping:
+
+    1. `name` carries the OPTION text, so every tick-box in one question has a
+       different name. Grouping on `name` produced one field per option.
+    2. The question is a <label> inside the <fieldset>, not a <legend>. It is
+       told apart from the option labels by its `for`, which points at the
+       field path rather than at any input in the fieldset.
+-->
+<html>
+  <body>
+    <form>
+      <div data-field-path="48584f5c" data-field-entry-id="04e9d69c_48584f5c">
+        <fieldset class="_container _fieldEntry">
+          <label class="ashby-application-form-question-title" for="48584f5c"
+            >Why are you interested in working at Plaid? Select all that apply.</label
+          >
+          <div class="_option">
+            <span
+              ><input
+                type="checkbox"
+                id="04e9d69c_48584f5c-labeled-checkbox-0"
+                name="Plaid's Mission"
+            /></span>
+            <label for="04e9d69c_48584f5c-labeled-checkbox-0">Plaid's Mission</label>
+          </div>
+          <div class="_option">
+            <span
+              ><input
+                type="checkbox"
+                id="04e9d69c_48584f5c-labeled-checkbox-1"
+                name="Passion for Fintech Industry"
+            /></span>
+            <label for="04e9d69c_48584f5c-labeled-checkbox-1"
+              >Passion for Fintech Industry</label
+            >
+          </div>
+        </fieldset>
+      </div>
+
+      <div data-field-path="7ab21c90" data-field-entry-id="04e9d69c_7ab21c90">
+        <fieldset class="_container _fieldEntry">
+          <label class="ashby-application-form-question-title" for="7ab21c90"
+            >Preferred Work Location</label
+          >
+          <div class="_option">
+            <span
+              ><input
+                type="checkbox"
+                id="04e9d69c_7ab21c90-labeled-checkbox-0"
+                name="San Francisco HQ"
+            /></span>
+            <label for="04e9d69c_7ab21c90-labeled-checkbox-0">San Francisco HQ</label>
+          </div>
+          <div class="_option">
+            <span
+              ><input
+                type="checkbox"
+                id="04e9d69c_7ab21c90-labeled-checkbox-1"
+                name="New York City Office"
+            /></span>
+            <label for="04e9d69c_7ab21c90-labeled-checkbox-1"
+              >New York City Office</label
+            >
+          </div>
+        </fieldset>
+      </div>
+
+      <!-- A plain text field alongside, to prove nothing else regressed. -->
+      <label for="name">Name</label>
+      <input id="name" name="name" type="text" />
+    </form>
+  </body>
+</html>

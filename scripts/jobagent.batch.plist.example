@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- macOS LaunchAgent for the twice-daily proposal batch.
+
+     1. Replace /PATH/TO/job-agent below with your clone's absolute path.
+        NOTE: macOS denies LaunchAgents access to ~/Downloads, ~/Desktop and
+        ~/Documents (TCC) — keep the clone somewhere else, e.g. ~/Developer.
+     2. cp scripts/jobagent.batch.plist.example \
+          ~/Library/LaunchAgents/com.YOURNAME.jobagent.batch.plist
+        (rename the Label below to match the filename)
+     3. launchctl load ~/Library/LaunchAgents/com.YOURNAME.jobagent.batch.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.YOURNAME.jobagent.batch</string>
+
+  <!-- Poll the boards, send the list to Telegram, wait for auto/manual,
+       fill what the user picks. Never submits: submit_mode is never and
+       fill_batch forces it. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/PATH/TO/job-agent/.venv/bin/job-agent</string>
+    <string>batch</string>
+    <string>--limit</string>
+    <string>25</string>
+    <string>--wait</string>
+    <string>90</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/PATH/TO/job-agent</string>
+
+  <!-- 10:00 and 15:00 daily. -->
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict>
+      <key>Hour</key><integer>10</integer>
+      <key>Minute</key><integer>0</integer>
+    </dict>
+    <dict>
+      <key>Hour</key><integer>15</integer>
+      <key>Minute</key><integer>0</integer>
+    </dict>
+  </array>
+
+  <!-- The run waits up to 90 minutes for a Telegram reply, so the two slots
+       can never overlap and launchd should not start a second copy. -->
+  <key>AbandonProcessGroup</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>/PATH/TO/job-agent/data/batch.log</string>
+  <key>StandardErrorPath</key>
+  <string>/PATH/TO/job-agent/data/batch.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <!-- Not at load: installing this should not fire a batch immediately.
+       A slot missed because the Mac was asleep is run by launchd on wake. -->
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

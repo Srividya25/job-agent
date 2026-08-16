@@ -1,0 +1,89 @@
+# Copy to profile/profile.yaml and fill in. That file is gitignored.
+#
+#   cp profile/profile.example.yaml profile/profile.yaml
+#
+# This is the ONLY place your personal data lives. Nothing here is ever
+# hardcoded in source, and nothing here is committed.
+
+identity:
+  first_name: Jane
+  last_name: Doe
+  email: jane.doe@example.com
+  phone: "5551234567"
+  linkedin: https://linkedin.com/in/janedoe
+  github: https://github.com/janedoe
+  portfolio: https://janedoe.dev
+
+address:
+  line1: 123 Example St
+  line2: ""
+  city: Springfield
+  state: Illinois
+  postal_code: "62701"
+  country: United States
+
+work_authorization:
+  # Drives the sponsorship filter. If needs_sponsorship is true, postings
+  # that say "no sponsorship" or require citizenship/clearance are dropped.
+  status: F-1 STEM OPT
+  needs_sponsorship: true
+  authorized_now: true
+  requires_clearance_eligible: false
+
+education:
+  - school: Example University
+    degree: Bachelor's
+    field: Computer Science
+    graduation_year: 2023
+
+experience:
+  years: 2
+  current_title: Software Engineer
+
+# Used by the skills component of the match score (40% of the total).
+# `must_have` are the ones you actually want to be hired for.
+skills:
+  must_have: [Python, Java, SQL]
+  nice_to_have: [React, AWS, Docker, Kubernetes, Spark]
+
+preferences:
+  titles:
+    - Software Engineer
+    - Backend Engineer
+    - Machine Learning Engineer
+  exclude_titles:
+    - Senior Staff
+    - Principal
+    - Manager
+    - Director
+  locations: [San Jose, San Francisco, Bay Area, Remote]
+  remote_ok: true
+  min_company_size: 100     # sub-100 startups rarely sponsor
+  min_match_score: 0.80     # auto-apply threshold; calibrate before trusting
+  min_title_match: 0.58     # drop jobs whose title matches none of `titles`
+                            # (recruiters, support, ops); 0 shows everything
+  min_propose_score: 0.50   # only propose jobs at/above this overall match;
+                            # 0 proposes everything the title gate allows
+
+# Your resume versions. The agent picks whichever scores highest per job.
+# Paths are relative to the repo root; these files are gitignored.
+resumes:
+  - label: backend
+    path: profile/resume_backend.pdf
+    target_roles: [Backend Engineer, Software Engineer]
+  - label: ml
+    path: profile/resume_ml.pdf
+    target_roles: [Machine Learning Engineer, Data Scientist]
+
+# Optional. Only used to answer EEO questions that are already optional
+# on the application itself. Leave blank to have the agent skip them.
+eeo:
+  gender: ""
+  race: ""
+  veteran_status: ""
+  disability_status: ""
+
+automation:
+  daily_cap: 15             # hard ceiling on applications per day
+  delay_between_apps: 45    # seconds; be a polite client
+  never_apply_portals: [linkedin]

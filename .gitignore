@@ -1,0 +1,54 @@
+# --- secrets & personal data -------------------------------------------
+# Everything here is either a credential or identifies a real person.
+.env
+.env.*
+!.env.example
+
+profile/*.yaml
+!profile/*.example.yaml
+profile/*.pdf
+profile/*.docx
+
+# resumes, application history, learned answers, cached datasets
+data/
+!data/.gitkeep
+
+# captured form fixtures may hold session tokens + prefilled personal data.
+# `job-agent capture` scrubs them; anything unscrubbed stays local.
+tests/fixtures/pages/*.raw.html
+
+# The pre-rewrite implementation, kept locally for reference only.
+# It hardcodes a real home address, phone and email, so it must never enter
+# git history — delete the directory once you no longer want it around.
+legacy/
+
+# --- python -------------------------------------------------------------
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+
+# --- browser profile ----------------------------------------------------
+chrome-profile/
+
+# --- agent tooling artifacts ---------------------------------------------
+# Local state from Claude Code / Ruflo. The memory DBs in particular hold
+# notes and session data that have no business in a public repo.
+.claude/
+.claude-flow/
+.swarm/
+*.rvf
+*.rvf.lock
+ruvector.db
+
+# --- os -----------------------------------------------------------------
+.DS_Store
+
+# The installed LaunchAgent carries the owner's real username and paths;
+# only the .example template is published.
+scripts/com.*.plist
