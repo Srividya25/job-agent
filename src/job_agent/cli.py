@@ -864,6 +864,11 @@ def batch(
         False, "--repeats",
         help="Also include jobs already shown in earlier batches.",
     ),
+    catch_up: bool = typer.Option(
+        False, "--catch-up",
+        help="Run only if a scheduled slot was missed (e.g. machine was "
+        "off); exit quietly otherwise.",
+    ),
     wait: int = typer.Option(90, help="Minutes to wait for your reply."),
     approve_window: int = typer.Option(
         120, help="Minutes to keep listening for `submit <n>` after filling."
@@ -888,6 +893,25 @@ def batch(
     profile = _profile_or_exit()
     telegram = Telegram.from_env()
     interactive = sys.stdin.isatty()
+
+    if catch_up:
+        import subprocess
+
+        with db.connect() as conn:
+            last = db.last_proposal_started(conn)
+        owed = schedule.missed_slot(last)
+        if owed is None:
+            console.print("[dim]No slot missed — nothing to catch up.[/]")
+            raise typer.Exit()
+        # Own process matches too, so >1 means another batch is live (e.g.
+        # login raced the 10:00 slot) — that one owns the offsets.
+        running = subprocess.run(
+            ["pgrep", "-f", "job-agent batch"], capture_output=True, text=True
+        ).stdout.strip().splitlines()
+        if len(running) > 1:
+            console.print("[dim]A batch is already running — standing down.[/]")
+            raise typer.Exit()
+        console.print(f"Catching up the missed {owed:%-I:%M %p} slot…")
 
     try:
         window = parse_since(since)

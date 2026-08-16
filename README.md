@@ -160,6 +160,10 @@ repeat a job you've already been shown.
 macOS: copy `scripts/jobagent.batch.plist.example` to
 `~/Library/LaunchAgents/`, replace the placeholder paths (instructions in
 the file), and `launchctl load` it — the agent then proposes twice a day.
+A slot missed while the Mac was asleep runs on wake; for slots missed
+while it was powered **off**, also install
+`scripts/jobagent.catchup.plist.example` — it runs `batch --catch-up` at
+login, which fires only when a scheduled slot actually went uncovered.
 Linux: an equivalent cron line is
 `0 10,15 * * * cd /path/to/job-agent && .venv/bin/job-agent batch`.
 

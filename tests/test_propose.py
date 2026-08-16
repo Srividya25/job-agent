@@ -309,6 +309,27 @@ def test_a_proposed_job_is_never_proposed_again(isolated_db) -> None:
     assert [j.company for j in fresh] == ["Chime"]
 
 
+def test_missed_slot_detection() -> None:
+    """Powered-off machines skip launchd calendar jobs; catch-up owes the
+    latest uncovered slot and nothing when the last batch covered it."""
+    from datetime import datetime
+
+    from job_agent.schedule import missed_slot
+
+    now = datetime(2026, 8, 16, 13, 9)
+    # Last batch ran at 10:02 today — the 10:00 slot is covered.
+    assert missed_slot(datetime(2026, 8, 16, 10, 2), now) is None
+    # Laptop was off since yesterday evening: owes today's 10:00.
+    assert missed_slot(datetime(2026, 8, 15, 15, 1), now) == \
+        datetime(2026, 8, 16, 10, 0)
+    # After 15:00 with only the morning run done: owes 15:00.
+    assert missed_slot(datetime(2026, 8, 16, 10, 2),
+                       datetime(2026, 8, 16, 17, 0)) == \
+        datetime(2026, 8, 16, 15, 0)
+    # Never ran at all: owes the latest past slot.
+    assert missed_slot(None, now) == datetime(2026, 8, 16, 10, 0)
+
+
 def test_skill_gaps_aggregate_and_rank() -> None:
     from job_agent.models import MatchBreakdown
 

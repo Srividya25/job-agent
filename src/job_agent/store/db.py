@@ -456,6 +456,14 @@ def open_questions(conn: sqlite3.Connection) -> list[sqlite3.Row]:
 # --------------------------------------------------------------------------
 
 
+def last_proposal_started(conn: sqlite3.Connection) -> datetime | None:
+    row = conn.execute("select max(started_at) m from proposal_runs").fetchone()
+    try:
+        return datetime.fromisoformat(row["m"]) if row and row["m"] else None
+    except ValueError:
+        return None
+
+
 def start_proposal(conn: sqlite3.Connection, label: str = "") -> int:
     cur = conn.execute(
         "insert into proposal_runs (started_at, label) values (?,?)",

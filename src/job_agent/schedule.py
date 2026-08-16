@@ -34,6 +34,34 @@ from .store import db
 
 POLL_SECONDS = 20
 
+# The scheduled proposal slots (matches the LaunchAgent's calendar).
+SLOT_HOURS = (10, 15)
+
+
+def missed_slot(
+    last_started: datetime | None, now: datetime | None = None
+) -> datetime | None:
+    """The most recent scheduled slot no batch has covered, or None.
+
+    launchd runs a slot missed during SLEEP on wake, but a slot missed while
+    the machine was powered OFF is silently skipped. A login-time catch-up
+    run calls this to decide whether it owes her a batch: it does when the
+    latest past slot is newer than the last batch that actually started.
+    """
+    from datetime import time as _time, timedelta as _td
+
+    now = now or datetime.now()
+    past_slots = [
+        datetime.combine(now.date() - _td(days=days), _time(hour))
+        for days in (0, 1)
+        for hour in SLOT_HOURS
+        if datetime.combine(now.date() - _td(days=days), _time(hour)) <= now
+    ]
+    latest = max(past_slots)
+    if last_started is None or last_started < latest:
+        return latest
+    return None
+
 
 @dataclass
 class BatchResult:

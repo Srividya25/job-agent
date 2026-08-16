@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Catch-up runner: launchd skips calendar jobs missed while the machine
+     was powered OFF (sleep is fine — those run on wake). This agent runs
+     once at every login; `batch --catch-up` exits immediately unless a
+     scheduled slot was actually missed, so it costs nothing on a normal day.
+
+     Setup: replace /PATH/TO/job-agent, then
+       cp scripts/jobagent.catchup.plist.example \
+         ~/Library/LaunchAgents/com.YOURNAME.jobagent.catchup.plist
+       launchctl load ~/Library/LaunchAgents/com.YOURNAME.jobagent.catchup.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.YOURNAME.jobagent.catchup</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/PATH/TO/job-agent/.venv/bin/job-agent</string>
+    <string>batch</string>
+    <string>--catch-up</string>
+    <string>--label</string>
+    <string>catch-up</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/PATH/TO/job-agent</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/PATH/TO/job-agent/data/batch.log</string>
+  <key>StandardErrorPath</key>
+  <string>/PATH/TO/job-agent/data/batch.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+</dict>
+</plist>
