@@ -41,20 +41,143 @@ discover → score → propose on Telegram → you pick → fill → you review 
 
 ## Setup
 
+**You need:** Python 3.12+, Google Chrome, a Telegram account, and your
+resume as PDF(s). macOS or Linux. On macOS, do **not** put the clone in
+`~/Downloads`, `~/Desktop`, or `~/Documents` — scheduled runs are denied
+access to those folders; `~/Developer` or `~/code` work fine.
+
+### 1. Install
+
 ```bash
+git clone https://github.com/Srividya25/job-agent.git
+cd job-agent
 python3.12 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 .venv/bin/playwright install chromium
-
-job-agent init --wizard  # guided: profile, resumes, Telegram bot, keys
-job-agent data           # downloads reference datasets (H-1B filings, boards)
+alias job-agent=$PWD/.venv/bin/job-agent   # or add .venv/bin to PATH
 ```
 
-The wizard asks a few questions, sets up your Telegram bot (it discovers
-your chat id for you and sends a test message), and then verifies the
-profile against your actual resume PDFs. Prefer files? The manual path is
-`cp profile/profile.example.yaml profile/profile.yaml`, `cp .env.example
-.env`, edit both, then `job-agent check`.
+### 2. Create your profile (pick one path)
+
+**Guided (recommended):** `job-agent init --wizard` asks about you one
+question at a time — identity, work authorization, education, skills,
+wanted titles, resume paths — then sets up Telegram (it discovers your
+chat id for you and sends a test message), takes your optional API keys,
+and finishes by verifying the profile against your actual resume PDFs.
+
+**Manual:** copy the templates and edit them:
+
+```bash
+cp profile/profile.example.yaml profile/profile.yaml
+cp .env.example .env
+```
+
+In `profile.yaml`, every section matters to a different part of the agent:
+
+- `identity` / `address` — filled into application forms verbatim.
+- `work_authorization` — `needs_sponsorship: true` turns on the H-1B
+  filter: companies without sponsorship history are held back, and
+  postings requiring citizenship or a security clearance are dropped.
+- `education`, `experience` — must match your resume exactly; the agent
+  refuses to apply while they contradict it (see step 3).
+- `skills.must_have` — the skills you want to be hired for; 40% of the
+  match score.
+- `preferences.titles` — the roles you want. Jobs whose titles don't
+  relate to these are never shown (`min_title_match`), and jobs scoring
+  under `min_propose_score` overall are never proposed.
+- `resumes` — one entry per resume version, with `target_roles` so the
+  right resume wins the right job. Drop the PDFs in `profile/`.
+
+Both `profile.yaml` and `.env` are gitignored — nothing personal can end
+up in a commit, and a pre-commit hook double-checks that.
+
+### 3. Verify the profile against your resume
+
+```bash
+job-agent check
+```
+
+This compares every claim in `profile.yaml` (school, degree, email, name,
+experience) against the text of your resume PDFs and reports
+contradictions. It exists because of a real incident where a stale profile
+value put the wrong university into forms; the agent refuses to apply
+while an ERROR-level contradiction stands.
+
+### 4. Connect Telegram (the approval channel)
+
+If you used the wizard, this is already done. Manually:
+
+1. In Telegram, message **@BotFather** → `/newbot` → pick any name; copy
+   the token it gives you into `TELEGRAM_BOT_TOKEN` in `.env`.
+2. Send your new bot any message (it can't message you first).
+3. Open `https://api.telegram.org/bot<TOKEN>/getUpdates` in a browser and
+   read `"chat":{"id":…}` — that number is `TELEGRAM_CHAT_ID`.
+
+Everything the agent needs from you arrives here: ranked job lists with
+Auto/Manual/Ignore buttons, questions it can't answer, filled-form
+screenshots for review, and the Submit button that only you press.
+
+### 5. Download the reference datasets
+
+```bash
+job-agent data                 # USCIS H-1B employer data (~84k employers)
+job-agent companies discover   # probe which ATS each seed company uses
+```
+
+The H-1B data is what backs the sponsorship filter. `companies discover`
+builds `data/boards.json` — the boards polled on every run. Add your own
+targets: `job-agent companies discover mycompany`, or for Workday tenants
+`job-agent companies workday <careers URL>`.
+
+### 6. Optional extras (`.env`)
+
+- `ANTHROPIC_API_KEY` — Claude answers novel form questions and drafts
+  short "why us" answers from your profile facts (always shown to you
+  before anything is sent, never auto-submitted). Without a key, a local
+  [Ollama](https://ollama.com) model is used if one is running; without
+  either, novel questions are simply asked to you on Telegram.
+- `GMAIL_ADDRESS` + `GMAIL_APP_PASSWORD` — `job-agent confirm` reads your
+  inbox (strictly read-only) and records employers' "thanks for applying"
+  emails as submission receipts.
+- `ADZUNA_APP_ID/KEY` — extra discovery source.
+
+### 7. First run
+
+```bash
+job-agent chrome    # opens the dedicated Chrome profile (sign into nothing,
+                    # or into the ATS accounts you already have)
+job-agent batch     # discover → score → propose on Telegram
+```
+
+On Telegram you'll get the ranked list. Tap **Auto** under the jobs the
+agent should fill, **Manual** for ones you'll do yourself, **Ignore** to
+drop — then **Start**. Filled applications come back as a screenshot plus
+every value, and nothing is submitted until you say so. Batches never
+repeat a job you've already been shown.
+
+### 8. Schedule it (optional)
+
+macOS: copy `scripts/jobagent.batch.plist.example` to
+`~/Library/LaunchAgents/`, replace the placeholder paths (instructions in
+the file), and `launchctl load` it — the agent then proposes twice a day.
+Linux: an equivalent cron line is
+`0 10,15 * * * cd /path/to/job-agent && .venv/bin/job-agent batch`.
+
+### Troubleshooting
+
+- **Scheduled runs die instantly on macOS** — the clone is in
+  `~/Downloads`/`~/Desktop`/`~/Documents`; move it (see top) and re-point
+  the plist.
+- **"Could not open the browser"** — another Chrome is holding
+  `chrome-profile/`. Close that window (your personal Chrome is separate
+  and unaffected) and retry with `job-agent batch --no-discover`.
+- **Bot doesn't react to typed replies in a group** — BotFather →
+  Bot Settings → Group Privacy → turn **off**. Button taps work either way.
+- **Every company says "no H-1B filing history"** — run `job-agent data`;
+  the dataset isn't downloaded yet.
+- **Nothing gets proposed** — your gates may be strict; try
+  `job-agent list --min-score 0` to see what's queued and loosen
+  `min_propose_score` / `min_title_match` in `profile.yaml`.
 
 Filling uses a dedicated Chrome profile (`job-agent chrome` launches it) so
 your personal browser is never touched.
