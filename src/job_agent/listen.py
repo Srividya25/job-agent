@@ -149,8 +149,27 @@ def _route_callback(profile: Profile, telegram, data: str, query_id: str) -> Non
         if choice == "skip":
             telegram.answer_callback(query_id, f"Dropped #{n}")
             return
-        telegram.answer_callback(query_id, f"Submitting #{n}…")
-        asyncio.run(approve.submit_approved(profile, row, telegram))
+        telegram.answer_callback(
+            query_id,
+            f"Submitting #{n} — refilling and checking against what you "
+            "approved; a few minutes.",
+        )
+        try:
+            asyncio.run(approve.submit_approved(profile, row, telegram))
+        except Exception as exc:  # noqa: BLE001
+            # Claiming the review and then dying stranded it: her next tap
+            # got "already decided" with nothing submitted. Re-open it so
+            # tapping again simply works.
+            with db.connect() as conn:
+                conn.execute(
+                    "update approvals set decision = null, decided_at = null "
+                    "where id = ?", (row["id"],),
+                )
+            telegram.send(
+                f"⚠️ #{n} could not submit ({type(exc).__name__}: "
+                f"{str(exc)[:120]}). Nothing was sent — the review is open "
+                "again, tap Submit to retry."
+            )
         return
 
     telegram.answer_callback(query_id, "I don't recognize that button.")
