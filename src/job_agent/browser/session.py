@@ -222,7 +222,7 @@ class Session:
         return closed
 
 
-async def attach(port: int = DEBUG_PORT) -> Session:
+async def attach(port: int = DEBUG_PORT, headless: bool | None = None) -> Session:
     """A browser to work in: the running Chrome if possible, else launch one.
 
     Attaching over CDP is preferred — it reuses the window the user already
@@ -237,16 +237,25 @@ async def attach(port: int = DEBUG_PORT) -> Session:
     the directory — so that case is reported as something to fix rather than
     guessed at.
     """
+    # Unattended fills run headless by default: a visible Chrome stealing
+    # focus every few minutes made the machine unusable while she worked.
+    # Anything that needs her hands (window sessions, with-me) passes
+    # headless=False explicitly. JOB_AGENT_HEADFUL=1 forces windows back on
+    # for debugging.
+    if headless is None:
+        import os
+
+        headless = os.getenv("JOB_AGENT_HEADFUL", "") != "1"
     playwright = await async_playwright().start()
     try:
-        browser = await _open_browser(playwright, port)
+        browser = await _open_browser(playwright, port, headless)
     except BaseException:
         await playwright.stop()
         raise
     return Session(browser=browser, _playwright=playwright)
 
 
-async def _open_browser(playwright, port: int) -> Browser:
+async def _open_browser(playwright, port: int, headless: bool = False) -> Browser:
     cdp_error: Exception | None = None
     if is_running(port):
         try:
@@ -259,7 +268,8 @@ async def _open_browser(playwright, port: int) -> Browser:
     PROFILE_DIR.mkdir(parents=True, exist_ok=True)
     try:
         context = await playwright.chromium.launch_persistent_context(
-            str(PROFILE_DIR), headless=False, channel="chrome", args=LAUNCH_FLAGS
+            str(PROFILE_DIR), headless=headless, channel="chrome",
+            args=LAUNCH_FLAGS,
         )
     except Exception as exc:  # noqa: BLE001 - translate into something actionable
         if cdp_error is not None and is_running(port):

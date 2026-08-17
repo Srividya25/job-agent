@@ -590,7 +590,7 @@ def capture(
     from .forms.capture import save_fixture
 
     async def run() -> tuple[str, int]:
-        sess = await bs.attach()
+        sess = await bs.attach(headless=False)
         try:
             page = await sess.open(url) if url else await sess.active_page()
             await page.wait_for_load_state("domcontentloaded")
@@ -636,7 +636,7 @@ def fill(
         resume_path = chosen.path
 
     async def run():
-        sess = await bs.attach()
+        sess = await bs.attach(headless=False)
         try:
             page = await sess.open(url) if url else await sess.active_page()
             await page.wait_for_load_state("domcontentloaded")
@@ -736,15 +736,8 @@ def apply_cmd(
         + (f" · window {since}" if since else "")
     )
 
-    def on_event(job, outcome, blocked=""):
-        counts = outcome.resolution.summary() if outcome.resolution else {}
-        console.print(
-            f"  [dim]{int(job.match_score*100):>3}%[/] {job.company[:18]:18} "
-            f"{job.title[:34]:34} "
-            f"[green]{counts.get('cache',0)+counts.get('rules',0)} filled[/] "
-            f"[yellow]{counts.get('unresolved',0)} open[/]"
-            + (f"  [red]{blocked}[/]" if blocked else "  [green]ready[/]")
-        )
+    def on_event(message: str) -> None:
+        console.print(f"  [dim]{message}[/]")
 
     report = asyncio.run(
         apply_batch(
@@ -1391,7 +1384,7 @@ def with_me_cmd(
         job = db.job_by_key(conn, row["dedupe_key"])
 
     async def run() -> None:
-        session = await bs.attach()
+        session = await bs.attach(headless=False)
         try:
             resume = _resume_for(profile, job)
             console.print(f"Opening {job.company} — {job.title[:44]}…")
@@ -1510,7 +1503,7 @@ def learn_cmd(
     from .resolve.engine import scope_for
 
     async def run() -> list[tuple[str, str, str]]:
-        session = await bs.attach()
+        session = await bs.attach(headless=False)
         try:
             page = await session.active_page()
             root, fields = await form_root(page)

@@ -342,7 +342,10 @@ async def apply_batch(
 
             blocked = gate_blocks(outcome, job, profile, submit_mode)
             if on_event:
-                on_event(job, outcome, blocked)
+                # One readable string, not (job, outcome, blocked): the old
+                # three-arg shape dumped whole Job reprs into logs and blew
+                # up single-arg callbacks — a tap-to-fill crashed on it.
+                on_event(f"{job.company[:28]}: {blocked or 'filled'}")
 
             # Park whenever something is blocked and there is anything to ask
             # about — not only when the DOM marked a field required. An

@@ -1002,7 +1002,7 @@ async def window_session(
     if job is None:
         return 0
 
-    session = await bs.attach()
+    session = await bs.attach(headless=False)
     try:
         resume = _resume_for(profile, job)
         page = await session.open(job.url)
