@@ -890,6 +890,26 @@ def _discover_now(profile, limit_boards: int = 0) -> int:
 
     resumes = load_resumes(profile.resumes)
     postings = asyncio.run(fetch_all(boards, search=profile.preferences.titles))
+
+    # The aggregator lane: everything Adzuna indexed in the last 24h for her
+    # titles — the "posted in the last 24 hours" board filter, market-wide.
+    # Silent without keys; the funnel below treats these like any posting.
+    from .config import load_secrets
+
+    secrets = load_secrets()
+    if secrets.adzuna_app_id and secrets.adzuna_app_key:
+        from .discover.sources import adzuna
+
+        async def _adzuna():
+            async with make_client() as client:
+                return await adzuna.fetch_fresh(
+                    client, secrets.adzuna_app_id, secrets.adzuna_app_key,
+                    profile.preferences.titles,
+                )
+        fresh = asyncio.run(_adzuna())
+        console.print(f"  [dim]adzuna: {len(fresh)} fresh posting(s)[/]")
+        postings += fresh
+
     jobs = dedupe(postings)
 
     with db.connect() as conn:
