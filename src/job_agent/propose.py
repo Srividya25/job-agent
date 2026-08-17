@@ -81,13 +81,31 @@ def build(jobs: list[Job]) -> list[Proposed]:
 # --------------------------------------------------------------------------
 
 
+def age_label(job: Job) -> str:
+    """How old the POSTING is — so an old listing that surfaced late is
+    never mistaken for a fresh one. She judges staleness; nothing hides."""
+    from datetime import date
+
+    if not job.posted_at:
+        return "posting date unknown"
+    days = (date.today() - job.posted_at.date()).days
+    if days <= 0:
+        return "🆕 posted today"
+    if days == 1:
+        return "🆕 posted yesterday"
+    if days <= 13:
+        return f"posted {days}d ago"
+    return f"⏳ posted {job.posted_at:%b %d}"
+
+
 def _entry(item: Proposed, show_hint: bool) -> str:
     job = item.job
     resume = job.best_resume or "general"
     label = "resume" if item.job.match_score >= STRONG_MATCH else "nearest resume"
     lines = [
         f"{item.ordinal}. {item.percent}%  {job.company} · {job.title}",
-        f"   {job.location or 'location not stated'} · {label}: {resume}",
+        f"   {job.location or 'location not stated'} · {label}: {resume} "
+        f"· {age_label(job)}",
         f"   {job.url}",
     ]
     if show_hint:
@@ -268,7 +286,7 @@ def job_button_text(item: Proposed) -> str:
     return (
         f"{item.ordinal}. {item.percent}%  {job.company}\n"
         f"{job.title}\n"
-        f"{job.location or 'location not stated'} · "
+        f"{age_label(job)} · {job.location or 'location not stated'}\n"
         f"resume: {job.best_resume or 'general'} · {default}\n"
         f"{job.url}"
     )

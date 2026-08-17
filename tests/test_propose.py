@@ -52,6 +52,28 @@ def test_format_entries_keeps_every_job_whole() -> None:
     assert all(len(m) <= propose.TELEGRAM_LIMIT for m in messages)
 
 
+def test_posting_age_is_always_visible() -> None:
+    """An old posting that surfaced late must say so — freshness is judged
+    by her, never disguised."""
+    from datetime import datetime, timedelta
+
+    fresh = make_job(0.9, "FreshCo")
+    fresh.posted_at = datetime.now()
+    old = make_job(0.8, "OldCo")
+    old.posted_at = datetime.now() - timedelta(days=30)
+    unknown = make_job(0.7, "MysteryCo")
+
+    assert "today" in propose.age_label(fresh)
+    assert "⏳" in propose.age_label(old)
+    assert "unknown" in propose.age_label(unknown)
+
+    items = propose.build([fresh, old])
+    assert "🆕 posted today" in propose.job_button_text(items[0])
+    assert "⏳" in propose.job_button_text(items[1])
+    joined = "\n".join(propose.format_proposal(items, "10 am", 2))
+    assert "🆕 posted today" in joined
+
+
 def test_every_job_carries_the_decision_hint() -> None:
     messages = propose.format_proposal(
         propose.build([make_job(0.95), make_job(0.5)]), "10 am", 2
