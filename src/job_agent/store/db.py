@@ -267,6 +267,7 @@ def list_jobs(
     limit: int = 50,
     max_age_hours: int = 0,
     exclude_proposed: bool = False,
+    age_by: str = "posted",
 ) -> list[Job]:
     clauses = ["match_score >= ?"]
     params: list = [min_score]
@@ -284,22 +285,29 @@ def list_jobs(
         clauses.append("verdict = ?")
         params.append(verdict.value)
     if max_age_hours:
-        # Applying early measurably matters, so freshness is a hard filter
-        # rather than only the 10% recency weight in the score.
-        #
-        # Postings without a date fall back to when we first saw them: a job
-        # discovered on today's run is new *to us* even if the board did not
-        # say when it went up. Dropping those would silently lose every
-        # posting from a source with no timestamp.
         cutoff = (
             datetime.now().astimezone() - timedelta(hours=max_age_hours)
         ).isoformat()
-        clauses.append(
-            "(case when posted_at is not null and posted_at != ''"
-            "      then posted_at >= ?"
-            "      else discovered_at >= ? end)"
-        )
-        params.extend([cutoff, cutoff[:10]])
+        if age_by == "discovered":
+            # The batch window measures freshness of SUPPLY TO HER, not the
+            # board's posting date: boards surface postings late (a July
+            # posting first appeared here in mid-August), and a posted-date
+            # window made such roles permanently invisible — never shown,
+            # never re-considered. "Since it entered the system" has no
+            # such leak.
+            clauses.append("discovered_at >= ?")
+            params.append(cutoff[:10])
+        else:
+            # Applying early measurably matters, so freshness is a hard
+            # filter rather than only the 10% recency weight in the score.
+            #
+            # Postings without a date fall back to when we first saw them.
+            clauses.append(
+                "(case when posted_at is not null and posted_at != ''"
+                "      then posted_at >= ?"
+                "      else discovered_at >= ? end)"
+            )
+            params.extend([cutoff, cutoff[:10]])
     params.append(limit)
 
     rows = conn.execute(

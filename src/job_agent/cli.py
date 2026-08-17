@@ -990,6 +990,9 @@ def batch(
             min_score=profile.preferences.min_propose_score,
             limit=limit or 100_000, max_age_hours=window,
             exclude_proposed=not repeats,
+            # By discovery date: "everything that entered the system in the
+            # window", so late-surfacing postings are never silently lost.
+            age_by="discovered",
         )
         total = db.counts(conn).get("new", 0)
 

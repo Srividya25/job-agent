@@ -293,6 +293,30 @@ def test_only_explicit_auto_fills(isolated_db) -> None:
     assert schedule.to_fill(run_id, Mode.AUTO) == []
 
 
+def test_batch_window_measures_discovery_not_posting_date(isolated_db) -> None:
+    """A July posting that surfaces in August must not be invisible.
+
+    Boards list postings late; Adobe (posted 7/24, discovered 8/17) was
+    silently dropped by a posted-date window. The batch filters by when a
+    job ENTERED THE SYSTEM, so nothing late-surfacing is ever lost.
+    """
+    from datetime import datetime
+
+    db = isolated_db
+    job = make_job(0.8, "Adobe")
+    job.posted_at = datetime(2026, 7, 24)      # posted long ago
+    with db.connect() as conn:
+        db.upsert_job(conn, job)               # discovered today
+
+    with db.connect() as conn:
+        by_posted = db.list_jobs(conn, status=JobStatus.NEW, min_score=0.0,
+                                 max_age_hours=48)
+        by_discovered = db.list_jobs(conn, status=JobStatus.NEW, min_score=0.0,
+                                     max_age_hours=48, age_by="discovered")
+    assert by_posted == []                      # the leak
+    assert [j.company for j in by_discovered] == ["Adobe"]
+
+
 def test_a_proposed_job_is_never_proposed_again(isolated_db) -> None:
     """Each batch picks up where the last left off — no repeats.
 
