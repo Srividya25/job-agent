@@ -116,6 +116,12 @@ If you used the wizard, this is already done. Manually:
 3. Open `https://api.telegram.org/bot<TOKEN>/getUpdates` in a browser and
    read `"chat":{"id":…}` — that number is `TELEGRAM_CHAT_ID`.
 
+You can also send things TO the bot: a resume PDF registers it, and a
+pasted job URL — something you found on LinkedIn, a referral —
+ingests, scores, and fills that job on the spot. (The agent never
+automates LinkedIn itself: that risks your account. Paste the
+posting's Apply link.)
+
 Everything the agent needs from you arrives here: ranked job lists with
 Auto/Manual/Ignore buttons, questions it can't answer, filled-form
 screenshots for review, and the Submit button that only you press.

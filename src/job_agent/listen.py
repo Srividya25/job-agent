@@ -30,7 +30,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from . import approve, propose, schedule
+from . import approve, ingest, propose, schedule
 from .config import Profile, data_dir
 from .notify.telegram import Telegram, parse_replies
 from .store import db
@@ -257,7 +257,54 @@ def _route_command_line(profile: Profile, telegram, line: str) -> bool:
     return False
 
 
+def _handle_pasted_url(profile: Profile, telegram, url: str) -> None:
+    from .match.resume import load_resumes
+    from .models import is_workday
+
+    if ingest.is_linkedin(url):
+        telegram.send(
+            "🔗 That's a LinkedIn link — I can't work behind LinkedIn's "
+            "login (and automating it risks your account). Open the "
+            "posting, hit Apply, and paste me the company's application "
+            "page URL instead — I'll take it from there."
+        )
+        return
+
+    telegram.send("🔍 Reading that posting…")
+    job = ingest.build_job(url, profile, load_resumes(profile.resumes))
+    if job is None:
+        telegram.send(
+            "⚠️ I couldn't read that page. If it's a real application "
+            "form, open it in the agent's Chrome (`job-agent chrome`) and "
+            "use `job-agent with-me <company>`."
+        )
+        return
+
+    with db.connect() as conn:
+        db.upsert_job(conn, job)
+
+    if is_workday(job.ats, job.url):
+        telegram.send(
+            f"📎 {job.title} — {job.company}: that's Workday, so it's "
+            "yours to apply by hand. Tell me how it goes:"
+        )
+        schedule.send_outcome_prompt(telegram, job)
+        return
+
+    telegram.send(
+        f"▶️ Got it: {job.title[:48]} — {job.company} "
+        f"(match {job.match_score:.0%}). Filling now…"
+    )
+    _fill(profile, telegram, [(0, job.dedupe_key)])
+
+
 def _route_text(profile: Profile, telegram, text: str) -> None:
+    # A bare URL is a job she found somewhere — LinkedIn browsing, a
+    # referral — handed to the pipeline.
+    if (url := ingest.parse_url(text)) is not None:
+        _handle_pasted_url(profile, telegram, url)
+        return
+
     # A "done" that reaches the LISTENER means the hold it was meant for is
     # running in another process (a window session, a batch hold) whose
     # offset lost the race. The hand_done flag file is the cross-process
