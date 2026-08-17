@@ -1036,12 +1036,20 @@ def batch(
                 age_by="discovered",
             )
         seen = {j.dedupe_key for j in jobs}
+        from .models import is_workday
+
         provisional = [
             j for j in all_fresh
             if j.dedupe_key not in seen
             and len(j.description or "") < 400
             and j.match_breakdown is not None
-            and j.match_breakdown.title >= 0.7
+            # 0.65: "Neuron Runtime Software Development Engineer" scores
+            # 0.68 against "Software Engineer" — a 0.7 bar dropped exactly
+            # the job this lane exists to catch.
+            and j.match_breakdown.title >= 0.65
+            # Workday listings carry almost no data; too thin to justify
+            # a provisional pass on title fuzz alone.
+            and not is_workday(j.ats, j.url)
             and passes_gates(j, profile)[0]
         ]
         jobs += provisional
