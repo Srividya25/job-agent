@@ -98,12 +98,18 @@ def age_label(job: Job) -> str:
     return f"⏳ posted {job.posted_at:%b %d}"
 
 
+def provisional_score(job: Job) -> bool:
+    """A snippet-length posting cannot be scored fairly — say so."""
+    return len(job.description or "") < 400
+
+
 def _entry(item: Proposed, show_hint: bool) -> str:
     job = item.job
     resume = job.best_resume or "general"
     label = "resume" if item.job.match_score >= STRONG_MATCH else "nearest resume"
+    pct = (f"~{item.percent}%?" if provisional_score(job) else f"{item.percent}%")
     lines = [
-        f"{item.ordinal}. {item.percent}%  {job.company} · {job.title}",
+        f"{item.ordinal}. {pct}  {job.company} · {job.title}",
         f"   {job.location or 'location not stated'} · {label}: {resume} "
         f"· {age_label(job)}",
         f"   {job.url}",
@@ -283,8 +289,10 @@ def job_button_text(item: Proposed) -> str:
         if item.tier == "yours"
         else "fills only if you tap Auto"
     )
+    pct = (f"~{item.percent}%? (short posting — score unreliable)"
+           if provisional_score(job) else f"{item.percent}%")
     return (
-        f"{item.ordinal}. {item.percent}%  {job.company}\n"
+        f"{item.ordinal}. {pct}  {job.company}\n"
         f"{job.title}\n"
         f"{age_label(job)} · {job.location or 'location not stated'}\n"
         f"resume: {job.best_resume or 'general'} · {default}\n"

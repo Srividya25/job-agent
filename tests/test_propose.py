@@ -52,6 +52,24 @@ def test_format_entries_keeps_every_job_whole() -> None:
     assert all(len(m) <= propose.TELEGRAM_LIMIT for m in messages)
 
 
+def test_snippet_postings_show_provisional_scores() -> None:
+    """Aggregator snippets starve the scorer; the % must not pretend."""
+    from job_agent.models import MatchBreakdown
+
+    snippet = make_job(0.39, "Annapurna")
+    snippet.description = "Build the Neuron runtime."
+    snippet.match_breakdown = MatchBreakdown(title=0.95)
+    full = make_job(0.7, "Stripe")
+    full.description = "x" * 1000
+
+    assert propose.provisional_score(snippet)
+    assert not propose.provisional_score(full)
+    items = propose.build([full, snippet])
+    assert "~39%?" in propose.job_button_text(items[1])
+    assert "score unreliable" in propose.job_button_text(items[1])
+    assert "70%" in propose.job_button_text(items[0])
+
+
 def test_posting_age_is_always_visible() -> None:
     """An old posting that surfaced late must say so — freshness is judged
     by her, never disguised."""

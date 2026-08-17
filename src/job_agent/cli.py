@@ -1023,6 +1023,29 @@ def batch(
 
     jobs = [j for j in jobs if passes_gates(j, profile)[0]]
 
+    # Aggregator postings carry only a snippet, which starves the skills
+    # and semantic components and deflates the total — a strong Annapurna
+    # SDE role scored 39% purely for lack of text. When the description is
+    # snippet-sized and the TITLE alone is a strong match, the job is
+    # proposed despite the floor, labeled provisional in the message.
+    if profile.preferences.min_propose_score:
+        with db.connect() as conn:
+            all_fresh = db.list_jobs(
+                conn, status=JobStatus.NEW, min_score=0.0, limit=100_000,
+                max_age_hours=window, exclude_proposed=not repeats,
+                age_by="discovered",
+            )
+        seen = {j.dedupe_key for j in jobs}
+        provisional = [
+            j for j in all_fresh
+            if j.dedupe_key not in seen
+            and len(j.description or "") < 400
+            and j.match_breakdown is not None
+            and j.match_breakdown.title >= 0.7
+            and passes_gates(j, profile)[0]
+        ]
+        jobs += provisional
+
     # She needs sponsorship, so only proven sponsors are proposed: H-1B
     # filing history or an explicit offer in the JD (verdict ALLOW).
     # "Unproven" companies stay queued rather than being blocked — the
