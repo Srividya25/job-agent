@@ -100,7 +100,7 @@ def age_label(job: Job) -> str:
 
 def provisional_score(job: Job) -> bool:
     """A snippet-length posting cannot be scored fairly — say so."""
-    return len(job.description or "") < 400
+    return len(job.description or "") <= 600
 
 
 def _entry(item: Proposed, show_hint: bool) -> str:

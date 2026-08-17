@@ -1041,7 +1041,7 @@ def batch(
         provisional = [
             j for j in all_fresh
             if j.dedupe_key not in seen
-            and len(j.description or "") < 400
+            and len(j.description or "") <= 600
             and j.match_breakdown is not None
             # 0.65: "Neuron Runtime Software Development Engineer" scores
             # 0.68 against "Software Engineer" — a 0.7 bar dropped exactly
