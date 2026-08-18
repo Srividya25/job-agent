@@ -94,7 +94,19 @@ def _route_callback(profile: Profile, telegram, data: str, query_id: str) -> Non
                 job = db.job_by_key(conn, row["dedupe_key"])
             if job is None:
                 return
+            from .models import is_workday
+
             if value == propose.Decision.MANUAL.value:
+                schedule.send_outcome_prompt(telegram, job, telegram.jobs_chat_id)
+            elif value == propose.Decision.AUTO.value and is_workday(
+                job.ats, job.url
+            ):
+                # Workday is hers by hand — an auto tap on one must not
+                # launch a fill that the portal gate will only block.
+                telegram.send(
+                    f"🖐 {job.title[:44]} — {job.company} is Workday, so "
+                    "it's yours to apply by hand:"
+                )
                 schedule.send_outcome_prompt(telegram, job, telegram.jobs_chat_id)
             elif value == propose.Decision.AUTO.value:
                 # The tap IS the go signal — fill immediately, however old
@@ -355,15 +367,22 @@ def _ready_for_refill(conn) -> list[tuple[int, str]]:
     rows = conn.execute(
         """select min(p.id) as id, p.dedupe_key from proposals p
              join jobs j on j.dedupe_key = p.dedupe_key
-            where p.decision = 'auto' and j.status = 'new'
+            where p.decision = 'auto'
+              and j.status in ('new', 'needs_review')
               and exists (select 1 from pending_questions q
                           where q.dedupe_key = p.dedupe_key
                             and q.answered_at is not null)
               and not exists (select 1 from pending_questions q
                               where q.dedupe_key = p.dedupe_key
-                                and q.answered_at is null)
+                                and q.answered_at is null
+                                and q.field_type != 'textarea')
             group by p.dedupe_key"""
     ).fetchall()
+    # needs_review counts: answers recorded by other paths (a hold, the
+    # assistant) left jobs parked with everything answered and no way back.
+    # Open TEXTAREA questions don't block: "Additional Information" style
+    # optional prose is drafted by Tier 3 or legitimately left blank —
+    # three real applications sat deadlocked behind exactly those.
     return [(r["id"], r["dedupe_key"]) for r in rows]
 
 

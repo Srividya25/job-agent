@@ -514,8 +514,14 @@ def test_answered_auto_jobs_are_ready_for_refill(isolated_db) -> None:
 
     with db.connect() as conn:
         assert _ready_for_refill(conn) == []      # question still open
+        # An open OPTIONAL textarea must not block: Tier 3 drafts or blanks
+        # those, and three real applications deadlocked behind them.
+        db.add_pending(conn, job.dedupe_key, 2, "Additional Information",
+                       None, "textarea", "*")
         db.answer_pending(conn, qid, "F-1 OPT")
-        db.set_status(conn, job.dedupe_key, JobStatus.NEW)
+        # Parked (needs_review) counts too — answers recorded by a hold or
+        # the assistant left jobs stranded outside status 'new'.
+        db.set_status(conn, job.dedupe_key, JobStatus.NEEDS_REVIEW)
     with db.connect() as conn:
         ready = _ready_for_refill(conn)
     assert [k for _, k in ready] == [job.dedupe_key]
