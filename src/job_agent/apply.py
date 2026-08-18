@@ -273,6 +273,11 @@ def unanswered_questions(outcome: ApplyOutcome) -> list[FormField]:
     for field_ in sorted(
         outcome.resolution.unresolved, key=lambda f: (not f.required, f.label)
     ):
+        # Her rule: only required fields (the red-asterisk ones) are worth
+        # interrupting her for. Optional blanks are hers to add at review —
+        # via ✏️ or the window — if she cares at all.
+        if not field_.required:
+            continue
         label = (field_.label or "").strip()
         key = label.lower()
         if not label or key in seen or _NOT_A_QUESTION.match(label):

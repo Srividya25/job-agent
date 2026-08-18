@@ -119,6 +119,22 @@ def _outcome(resolved: int, unresolved: int):
     return out
 
 
+def test_optional_unanswered_questions_are_not_asked() -> None:
+    """Her rule: no red asterisk, no interruption — optional blanks are
+    hers at review, required ones are the only questions worth sending."""
+    from job_agent.apply import ApplyOutcome, unanswered_questions
+    from job_agent.forms.extract import FormField
+    from job_agent.resolve.engine import Resolution
+
+    req = FormField(ref="#a", label="Work authorization?", type="radio",
+                    required=True)
+    opt = FormField(ref="#b", label="Additional Information", type="textarea",
+                    required=False)
+    outcome = ApplyOutcome(url="u")
+    outcome.resolution = Resolution(answers=[], unresolved=[opt, req])
+    assert [f.ref for f in unanswered_questions(outcome)] == ["#a"]
+
+
 def test_a_mostly_empty_form_is_not_offered_for_approval(profile_fixture=None) -> None:
     """Plaid resolved 9 of 35 with nothing marked required, and was offered
     for submission anyway. Completeness has to be checked separately."""

@@ -163,7 +163,10 @@ def format_review(
     for item in values:
         lines.append(f"  {item['label']}: {_trim(item['value'])}")
     if unresolved:
-        lines.append(f"  ⚠️ {unresolved} left blank — nothing could answer them")
+        lines.append(
+            f"  ◻️ {unresolved} left blank (optional/unanswered) — add via "
+            "✏️ or the window if you want them"
+        )
     lines += [
         "",
         url,

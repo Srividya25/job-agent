@@ -237,8 +237,15 @@ def gate_blocks(
         # Plaid's form resolved 9 of 35 and still passed, so an application
         # missing its office preference, education dates and screening
         # answers was offered for submission as if it were ready.
+        # Optional prose (textareas) is exempt from the completeness bar:
+        # "Additional Information" left blank is her choice, not a broken
+        # fill. Everything else still counts — the Plaid form that resolved
+        # 9 of 35 must keep getting caught.
         total = len(outcome.fields)
-        unresolved = len(outcome.resolution.unresolved)
+        unresolved = len([
+            f for f in outcome.resolution.unresolved
+            if f.required or f.type != "textarea"
+        ])
         if total and unresolved / total > MAX_UNANSWERED_SHARE:
             return f"{unresolved} of {total} fields unanswered"
         return ""
